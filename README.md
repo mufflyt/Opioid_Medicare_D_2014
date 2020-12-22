@@ -19,3 +19,6 @@ ggplot(iris, aes(x = Sepal.Length, y = Species)) + geom_density_ridges()
 
 # vroom
 I used the vroom package to read in all the drug prescription data for the four different years.  It worked like a charm.  Wow!
+
+# Working through the Dermatology Paper for this.  
+Opioid Prescribing Pattenrs and Complications in the Dermatology Medicare Population

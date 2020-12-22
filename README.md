@@ -17,4 +17,5 @@ The geom geom_density_ridges calculates density estimates from the provided data
 
 ggplot(iris, aes(x = Sepal.Length, y = Species)) + geom_density_ridges()
 
-
+# vroom
+I used the vroom package to read in all the drug prescription data for the four different years.  It worked like a charm.  Wow!

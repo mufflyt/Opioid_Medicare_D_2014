@@ -211,21 +211,24 @@ OpioidHeatMap <- ggplot(TidyOpioidRX, aes(x = reorder(Specialty, SpecialtyMedian
   geom_tile(aes(fill = SpecialtyMedian), color = "gray") +
   viridis::scale_fill_viridis(direction = -1, option = "B") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-  theme(axis.text.y = element_text(hjust = 0.25, size = 10)) +
+  theme(axis.text.y = element_text(hjust = 0.25, size = 8)) +
   labs(fill = "% Opioid of Total Prescriptions",
        title = "Medicare Opioid Prescription Rates By Specialty & State (2013 to 2017)\n",
        x = "",
        y = "State Overdose Death Rate Per 100,000") +
-  coord_fixed(ratio = .30) +
+  coord_fixed(ratio = .5) +
   theme(text = element_text(size = 10), 
         legend.direction = "horizontal",
         legend.position = "bottom",
         legend.title.align = 0.5, legend.key.width = unit(2, "cm"),
         legend.title = element_text(hjust = 0.5, angle = 0),
         axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+        axis.title = element_text(size = 14,face = "bold"),
         axis.text.y = element_text(margin = margin(0, 5, 5, 15))) + guides(fill = guide_colourbar(title.position = "top"))
 
 OpioidHeatMap
 
+ggsave(path = getwd(), filename = "OpioidHeatMap.png", width = 16, height = 11, device = 'png', dpi = 800)
+ggsave(path = getwd(), filename = "OpioidHeatMap_B.png", width = 16, height = 20, device = 'png', dpi = 800)
 
 

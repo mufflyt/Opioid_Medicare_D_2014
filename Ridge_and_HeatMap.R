@@ -1,5 +1,5 @@
 # Set libPaths.
-#.libPaths("/Users/tylermuffly/.exploratory/R/4.0")
+.libPaths("/Users/tylermuffly/.exploratory/R/4.0")
 
 # Load required packages.
 library(janitor)
@@ -109,6 +109,9 @@ opioidRX <-  Medicare_Part_D_Opioid_Prescriber_Summary_File_ALL %>%
   # I removed this filter from here because it is only useful for the ridges
   # The heatmap need all specialties
   #  %>% filter(Specialty == "FPMRS")
+write_rds(opioidRX, "Data/opioidRX.rds")
+#opioidRX <- readr::read_rds("Data/opioidRX.rds")
+dim(opioidRX)
 
 
 ### State by State Ridge Plot  ----

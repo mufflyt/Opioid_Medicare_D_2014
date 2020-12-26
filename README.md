@@ -22,3 +22,7 @@ I used the vroom package to read in all the drug prescription data for the four 
 
 # Working through the Dermatology Paper for this.  
 Opioid Prescribing Pattenrs and Complications in the Dermatology Medicare Population
+
+# Data 
+NUCC - https://www.nucc.org/index.php/code-sets-mainmenu-41/provider-taxonomy-mainmenu-40/csv-mainmenu-57, National uniform claim committee
+NPI data - https://www.dropbox.com/s/x5bduw6aqx8ht1p/npidata_pfile_20050523-20200913.csv?dl=0

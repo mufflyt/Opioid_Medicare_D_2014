@@ -94,6 +94,7 @@ dim(NPPES1)
 colnames(NPPES1)
 head(NPPES1)
 
+
 ############################################################################
 # Drug Prescriptions ---------------
 # Read in all FPMRS
@@ -393,7 +394,12 @@ all_years_fpmrs_prescribers <- drugs_all_years_fpmrs_only %>%
   select(-path, -npi, -nppes_provider_last_org_name, -nppes_provider_first_name, -nppes_provider_city, -nppes_provider_state, -specialty_description, -description_flag, -generic_name, -bene_count_ge65, -bene_count_ge65_suppress_flag, -total_claim_count_ge65, -ge65_suppress_flag, -total_30_day_fill_count_ge65, -total_day_supply_ge65, -total_drug_cost_ge65, -fullname1, -complete_address, -nppes.full.name.1, -Provider.First.Name, -Provider.Middle.Name, -Provider.Name.Suffix.Text, -Provider.Credential.Text, -Provider.First.Line.Business.Mailing.Address, -Provider.Business.Mailing.Address.City.Name, -Provider.Business.Mailing.Address.State.Name, -Provider.Business.Mailing.Address.Postal.Code, -Telephone1, -Fax, -Provider.First.Line.Business.Practice.Location.Address, -Provider.Business.Practice.Location.Address.City.Name, -Provider.Business.Practice.Location.Address.State.Name, -Provider.Business.Practice.Location.Address.Postal.Code, -Provider.Gender.Code, -Taxonomy1.Classification, -Taxonomy1.Specialization, -Taxonomy1.Notes, -Taxonomy2.Classification, -Taxonomy2.Specialization, -Taxonomy2.Notes,-`Year Of Birth`, -`Zip Code`) %>%
   mutate(Age_extracted_from_graduation_date_from_med_school = (2020 - `Graduation year`) + 22, Age = coalesce(Age, Age_extracted_from_graduation_date_from_med_school)) %>%
   clean_names(case = "parsed") %>%
-  select(-Age_extracted_from_graduation_date_from_med_school)
+  select(-Age_extracted_from_graduation_date_from_med_school) %>%
+  mutate(Years_from_NPI_enumeration = 2020 - year(Provider_Enumeration_Date)) %>%
+  select(-Provider_Enumeration_Date) %>%
+  mutate(`Years of experience` = cut(Years_from_NPI_enumeration, breaks = c(-Inf, 11, 12, 13, 14, Inf), labels = c("Less than 10 years", "11 years", "12 years", "13 years", "14 years and greater"), include.lowest = TRUE, dig.lab = 10)) %>%
+  mutate(ACOG_Regions = fct_relevel(ACOG_Regions, "District I", "District II", "District III", "District IV", "District V", "District VI", "District VII", "District VIII", "District IX", "District XI", "District XII")) %>%
+  mutate(Age_category = cut(Age, breaks = c(-Inf, 28, 44, 60, Inf), labels = c("Less than 28 years old", "28 to 43.9 years old", "44 to 59.9 years old", "Greater than or equal to 60 years old"), include.lowest = TRUE, dig.lab = 10))
 
 #readr::write_rds(all_years_fpmrs_prescribers, "Data/all_years_fpmrs_prescribers.rds")
 
@@ -430,15 +436,14 @@ paste0('~', linearphrase)
 # fullformula
 
 ####################################################################################
-table1 <- arsenal::tableby(formula =  ~ #Age + gender + Specialty + Credentials_match + ACOG_Regions,
-                           drug_name + total_30_day_fill_count + total_claim_count + total_day_supply + bene_count,
+table1 <- arsenal::tableby(formula =  ~ bene_count + drug_name + total_30_day_fill_count + total_claim_count + total_day_supply,
                            data= all_years_fpmrs_prescribers, 
-                           control = mycontrols)  #Jesus, Graduation year has to be in quotes
+                           control = mycontrols) 
 
-summary(table1, text=TRUE, title="Table 1:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than Ten Opioid Claims and the Top 1% of Opioid Prescribers using the 2014-2017 Part D Prescriber Public Use File")
+summary(table1, text=TRUE, title="Table 1:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than 10 Opioid Claims and the Top 1% of Opioid Prescribers Using the 2014 Part D Prescriber Public Use File")
 
 ####################################################################################
-table2 <- arsenal::tableby(formula =  ~ Age + gender + Specialty + Credentials_match + ACOG_Regions,
+table2 <- arsenal::tableby(formula =  ~ Age_category + gender + Specialty + Credentials_match + `Years of experience` + ACOG_Regions,
                          #+ drug_name + total_30_day_fill_count + total_claim_count + total_day_supply + bene_count,
                          data= all_years_fpmrs_prescribers, 
                          control = mycontrols)  #Jesus, Graduation year has to be in quotes

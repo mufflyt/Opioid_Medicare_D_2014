@@ -48,7 +48,7 @@ cls_begin <- replicate(60, NA)
 cls <- append(cls_begin, cls_end)
 
 invisible(gc())
-NPPES <- vroom("Data/npidata_pfile_20050523-20200913.csv", delim = ",")
+#NPPES <- vroom("Data/npidata_pfile_20050523-20200913.csv", delim = ",")
 NPPES <- read.csv("Data/npidata_pfile_20050523-20200913.csv", stringsAsFactors = FALSE, colClasses = cls) 
 invisible(gc())
 
@@ -59,7 +59,7 @@ beepr::beep(3) # to access exported functions you need to use a ::
 
 #####
 NPPES1 <- NPPES %>%
-  dplyr::filter("Entity Type Code" == "1") %>% #Remove all hospitals and nursing homes
+  dplyr::filter(Entity.Type.Code == "1") %>% #Remove all hospitals and nursing homes
   dplyr::filter(Provider.Business.Practice.Location.Address.State.Name %nin% c("ZZ", "AS", "FM", "GU", "MH", "MP", "PW", "VI")) %>% #Take out the places are not in the United States
   distinct(NPI, .keep_all = TRUE) %>%
   mutate(Provider.Credential.Text = str_remove_all(Provider.Credential.Text, "[[:punct:]]+")) %>%
@@ -116,6 +116,8 @@ dim(NPPES1)
 colnames(NPPES1)
 head(NPPES1)
 
+NPPES1 <- readr::read_rds("Data/NPPES1.rds")
+
 ############################################################################
 # Drug Prescriptions ---------------
 # Read in all FPMRS
@@ -153,7 +155,7 @@ drugs_all_years <-
 beepr::beep(2)
 
 readr::write_rds(drugs_all_years, "Data/drugs_all_years_filtered.rds")
-#readr::read_rds("Data/drugs_all_years_filtered.rds")
+#drugs_all_years <- readr::read_rds("Data/drugs_all_years_filtered.rds")
 
 colnames(drugs_all_years)
 dim(drugs_all_years)
@@ -223,15 +225,66 @@ beneficiaries
 number_of_opioid_claims <- sum(drugs_all_years_fpmrs_only$total_claim_count, na.rm = TRUE)
 number_of_opioid_claims
 
-#Opioid claims per FPMRS, mean [sd]
+# Opioid claims per FPMRS, mean [sd]
 number_of_opioid_claims_per_FPMRS <- round((number_of_opioid_claims / number_of_FPMRS), 2)
 number_of_opioid_claims_per_FPMRS
-mean(number_of_opioid_claims_per_FPMRS) # I think I screwed this up here.  Can't get SD.  ???????????????
-sd(number_of_opioid_claims_per_FPMRS)
+
+
+##
+##
+##
+# Here I think I can offer more a Discussion than an actually point:
+# The number of opioid claims per FPMRS offers some is a sort of average by itself but it represents
+# the average over a period of time because it sums up all the prescriptions in a given period.
+mean(number_of_opioid_claims_per_FPMRS)
+# As a consequence the value is a constant, not a vector of values
+# But we can calculate the average of opioid claims:
+mean(drugs_all_years_fpmrs_only$total_claim_count)
+# and from the same series also calculate the standard deviation
+sd(drugs_all_years_fpmrs_only$total_claim_count)
+# Alternatively we can calculate the mean and sd per FPMRS - representing the mean and average of prescription of such drugs for each FPMRS
+drugs_per_fpmrs <-
+  drugs_all_years_fpmrs_only %>% group_by(npi) %>% summarise(
+    mean_per_fpmrs = mean(total_claim_count, na.rm = TRUE),
+    sd_per_fpmrs = sd(total_claim_count, na.rm = TRUE), 
+    .groups="drop")
+# We could then calculate the overall mean and SD. This is the equivalent of an weighted mean (I checked)
+drugs_all_years_fpmrs_only %>% summarise(
+  mean_global = mean(total_claim_count, na.rm = TRUE),
+  sd_global = sd(total_claim_count, na.rm = TRUE)
+) 
+# I can't say that has any meaning, but you could get the mean claim count among the mean per fpmrs and take the sd of the means
+##
+##
+##
+
+
+# I think I screwed this up here.  Can't get SD.  ???????????????
+# sd(number_of_opioid_claims_per_FPMRS)
 
 #Number of beneficiaries per FPMRS
 beneficiaries_per_FPMRS <- round((beneficiaries / number_of_FPMRS), 1)
+# where is this drugs variable? is it the drugs_all_years_fpmrs_only ?
 sd(drugs$Number_of_bene_per_FPMRS) #Not right.  ????????????????
+
+##
+##
+##
+# If drugs_all_years_fpmrs_only is the right variable, we could try the approach I used above
+bene_per_fpmrs <-
+  drugs_all_years_fpmrs_only %>% group_by(npi) %>% summarise(
+    mean_per_fpmrs = mean(bene_count, na.rm = TRUE),
+    sd_per_fpmrs = sd(bene_count, na.rm = TRUE),
+    .groups = 'drop'
+  ) 
+# We could then calculate the overall mean and SD
+drugs_all_years_fpmrs_only %>% summarise(
+  bene_mean_global = mean(bene_count, na.rm = TRUE),
+  bene_sd_global = sd(bene_count, na.rm = TRUE)
+)
+##
+##
+##
 
 #Mean days’ supply per opioid claim
 Mean_days_supply_per_opioid_claim = round(mean(drugs_all_years_fpmrs_only$total_day_supply/drugs_all_years_fpmrs_only$bene_count, na.rm = TRUE), 1)
@@ -271,7 +324,39 @@ percent_of_opioids_Oxycodone_Hcl
 
 ######
 #For manuscript:  
-print(paste0("Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of ", format(number_of_opioid_claims, big.mark = ","), " opioid claims were prescribed to ", format(beneficiaries, big.mark = ","), " beneficiaries (Table 1). Each FPMRS prescribed a mean (SD) of ", format(number_of_opioid_claims_per_FPMRS, big.mark = ",")," (SD???) opioid claims to ", beneficiaries_per_FPMRS," (??) beneficiaries. Each beneficiary received a mean of", Mean_opioid_claims_per_beneficiary," opioid claims, with a supply lasting a mean of ", Mean_days_supply_per_opioid_claim," days. Combination hydrocodone and acetaminophen accounted for ", format(Number_of_opioids_Hydrocodone_Acetaminophen, big.mark = ",")," opioid claims (", percent_of_opioids_Hydrocodone_Acetaminophen,"%), oxycodone acetaminophen ", format(Number_of_opioids_Oxycodone_Hcl_Acetaminophen, big.mark = ","),"  opioid claims (", percent_of_opioids_Oxycodone_Hcl_Acetaminophen,"%), followed by tramadol hydrochloride ",Number_of_opioids_Tramadol," opioid claims (", percent_of_opioids_Tramadol,"%), and lastly oxycodone ", Number_of_opioids_Oxycodone_Hcl," opioid claims (", percent_of_opioids_Oxycodone_Hcl,"%)."))
+print(
+  paste0(
+    "Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of ",
+    format(number_of_opioid_claims, big.mark = ","),
+    " opioid claims were prescribed to ",
+    format(beneficiaries, big.mark = ","),
+    " beneficiaries (Table 1). Each FPMRS prescribed a mean (SD) of ",
+    format(number_of_opioid_claims_per_FPMRS, big.mark = ","),
+    " (SD???) opioid claims to ",
+    beneficiaries_per_FPMRS,
+    " (??) beneficiaries. Each beneficiary received a mean of",
+    Mean_opioid_claims_per_beneficiary,
+    " opioid claims, with a supply lasting a mean of ",
+    Mean_days_supply_per_opioid_claim,
+    " days. Combination hydrocodone and acetaminophen accounted for ",
+    format(Number_of_opioids_Hydrocodone_Acetaminophen, big.mark = ","),
+    " opioid claims (",
+    percent_of_opioids_Hydrocodone_Acetaminophen,
+    "%), oxycodone acetaminophen ",
+    format(Number_of_opioids_Oxycodone_Hcl_Acetaminophen, big.mark = ","),
+    "  opioid claims (",
+    percent_of_opioids_Oxycodone_Hcl_Acetaminophen,
+    "%), followed by tramadol hydrochloride ",
+    Number_of_opioids_Tramadol,
+    " opioid claims (",
+    percent_of_opioids_Tramadol,
+    "%), and lastly oxycodone ",
+    Number_of_opioids_Oxycodone_Hcl,
+    " opioid claims (",
+    percent_of_opioids_Oxycodone_Hcl,
+    "%)."
+  )
+)
 
 ###
 #Top 10 FPMRS prescribing the most opioids
@@ -300,10 +385,29 @@ Top_10_Mean_opioid_claims_per_beneficiary
 #Top 10 Mean days’ supply per opioid claim
 Top_10_Mean_days_supply_per_opioid_claim = mean(top10_opioid_prescribers$total_day_supply)
 ####???????????????
+##
+##
+# Is it wrong somehow?
+##
+##
 Top_10_Mean_days_supply_per_opioid_claim
 
 #For manuscript:
-print(paste0("We next identified the top 10 FPMRS prescribing opioids. These FPMRS accounted for ", percent_claims_top10_opioid_prescribers, "% of opioid claims and prescribed a total of ", format(top_10_number_of_opioid_claims, big.mark = ",")," opioid claims. Each FPMRS prescribed a mean (SD) of ", top_10_mean_claims," (SD?????????) opioid claims, and each beneficiary received a mean of ", Top_10_Mean_opioid_claims_per_beneficiary," opioid claims, with a supply of ", format(Top_10_Mean_days_supply_per_opioid_claim, big.mark = ",")," days."))
+print(
+  paste0(
+    "We next identified the top 10 FPMRS prescribing opioids. These FPMRS accounted for ",
+    percent_claims_top10_opioid_prescribers,
+    "% of opioid claims and prescribed a total of ",
+    format(top_10_number_of_opioid_claims, big.mark = ","),
+    " opioid claims. Each FPMRS prescribed a mean (SD) of ",
+    top_10_mean_claims,
+    " (SD?????????) opioid claims, and each beneficiary received a mean of ",
+    Top_10_Mean_opioid_claims_per_beneficiary,
+    " opioid claims, with a supply of ",
+    format(Top_10_Mean_days_supply_per_opioid_claim, big.mark = ","),
+    " days."
+  )
+)
 
 ##########################################################################
 #For Manuscript:
@@ -334,7 +438,28 @@ perc_other_90_gender_male <- sum(nrow(perc_other_90 %>% filter(gender == "Male")
 perc_perc_male_gender <- (perc_other_90_gender_male/perc_other_90_gender_denominator) * 100
 perc_perc_male_gender
 
-print(paste0("Among the top 1% of FPMRS prescribing opioids, ", top_10_male," (", perc_top_10_male,"%) were male physicians, compared with ", perc_other_90_gender_male," of ", perc_other_90_gender_denominator," (",perc_perc_male_gender,"%) in a random sample of the same size from the remaining FPMRS prescribing more than 10 opioid claims (P= 0.???? Diego I'm not sure how to do this????) (Table 2)."))
+##
+##
+# Can you explain more what you want to calculate?
+##
+##
+
+print(
+  paste0(
+    "Among the top 1% of FPMRS prescribing opioids, ",
+    top_10_male,
+    " (",
+    perc_top_10_male,
+    "%) were male physicians, compared with ",
+    perc_other_90_gender_male,
+    " of ",
+    perc_other_90_gender_denominator,
+    " (",
+    perc_perc_male_gender,
+    "%) in a random sample of the same size from the remaining FPMRS prescribing more than 10 opioid claims
+    (P= 0.???? Diego I'm not sure how to do this????) (Table 2)."
+  )
+)
 
 
 
@@ -353,7 +478,16 @@ tukey.plot.test <- TukeyHSD(tukey.plot.aov)
 plot(tukey.plot.test, las = 1)
 
 #For Manuscript:
-print(paste0("FPMRS in ACOG district XII prescribed higher numbers of opioid claims per 1000 Medicare beneficiaries, compared with FPMRS in the other ACOG districts (p < 0.01, Figure). ????Diego I'm not sure how to do this??????  Aggregated by region, FPMRS in the South prescribed 2.77 opioid claims per 1000 Medicare beneficiaries, compared with 1.60 in the West, 0.89 in the Midwest, and 0.83 in the Northeast (eTable 2 in the Supplement).????Diego I'm not sure how to do this??????"))
+print(
+  paste0(
+    "FPMRS in ACOG district XII prescribed higher numbers of opioid claims per 1000 Medicare beneficiaries, 
+    compared with FPMRS in the other ACOG districts (p < 0.01, Figure). 
+    ????Diego I'm not sure how to do this??????  
+    Aggregated by region, FPMRS in the South prescribed 2.77 opioid claims per 1000 Medicare beneficiaries,
+    compared with 1.60 in the West, 0.89 in the Midwest, and 0.83 in the Northeast (eTable 2 in the Supplement).
+    ????Diego I'm not sure how to do this??????"
+  )
+)
 
 ###########################
 continue_opioids_past_one_year <- format(round(beneficiaries * 0.051, digits = 0), big.mark = ",") 
@@ -369,21 +503,24 @@ continue_opioids_paste_three_year_high <- format(round(beneficiaries * 0.053, di
 continue_opioids_paste_three_year_high
 
 
-gi_opioids_side_effects_low <-
-  format(round(beneficiaries * 0.13, digits = 0), big.mark = ",")
+gi_opioids_side_effects_low <- format(round(beneficiaries * 0.13, digits = 0), big.mark = ",")
 gi_opioids_side_effects_low
-gi_opioids_side_effects_high <-
-  format(round(beneficiaries * 0.30, digits = 0), big.mark = ",")
+gi_opioids_side_effects_high <- format(round(beneficiaries * 0.30, digits = 0), big.mark = ",")
 gi_opioids_side_effects_high
 
-fracture_opioids_side_effects_low <-
-  format(round(beneficiaries * (531 / (1000 * 4)), digits = 0), big.mark =
-           ",") #531 per person-years, The calculation can be accomplished by adding the number of patients in the group and multiplying that number times the years that patients are in a study in order to calculate the patient-years (denominator). Then divide the number of events (numerator) by the denominator
+fracture_opioids_side_effects_low <- format(round(beneficiaries * (531 / (1000 * 4)), digits = 0), big.mark = ",") 
+##
+##
+# May you please explain what the index mean? Like a formal definition.
+##
+##
+#531 per person-years, The calculation can be accomplished by adding the number of patients in the group and multiplying that 
+# number times the years that patients are in a study in order to calculate the patient-years (denominator). Then divide the 
+# number of events (numerator) by the denominator
 # ???????????I don't think this is right Diego.  I've got to figure out person-years.  ????????
 fracture_opioids_side_effects_low
 
-fracture_opioids_side_effects_high <-
-  format(round(beneficiaries * (902 / 1000 * 4), digits = 0), big.mark = ",") #902 per person-years
+fracture_opioids_side_effects_high <- format(round(beneficiaries * (902 / 1000 * 4), digits = 0), big.mark = ",") #902 per person-years
 # ?????????????????????????
 
 leftover_opioid_pills <-

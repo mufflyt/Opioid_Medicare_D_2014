@@ -122,11 +122,9 @@ fs::file_size(file_paths)
 drugs_all_years <- 
   vroom::vroom(file_paths, delim = "\t", id = "path") %>%
   dplyr::filter(nppes_provider_state %in% c("AR", "AZ", "AL", "AK", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "RI", "PA", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC", "PR")) %>%
-  #dplyr::filter(specialty_description %in% c("Obstetrics & Gynecology", "Obstetrics/Gynecology", "Urology")) %>%
   dplyr::mutate_at(vars(drug_name), funs(stringr::str_to_title)) %>%
   dplyr::filter(stringr::str_to_lower(drug_name) %in% stringr::str_to_lower(c("Hydrocodone Bit-Ibuprofen", "Hydrocodone-Acetaminophen", "Oxycodone Hcl-Acetaminophen", "Tramadol Hcl", "Acetaminophen-Codeine", "Ascomp With Codeine", "Butalbital Compound-Codeine", "Fioricet With Codeine", "Codeine Sulfate", "Hydrocodone Bt-Homatropine Mbr", "Hydrocodone-Chlorpheniramine", "Hydrocodone-Homatropine Mbr", "Hydrocodone-Ibuprofen", "Hydromorphone Hcl", "Dilaudid", "Dilaudid-Hp", "Ms Contin", "Oxycontin", "Fentanyl", "Fentanyl Citrate", "Morphine Sulfate", "Morphine Sulfate Er", "Butorphanol Tartrate", "Methadone Hcl", "Oxycodone-Acetaminophen", "Acetaminoph-Caff-Dihydrocodein", "Oxymorphone Hcl", "Oxymorphone Hcl Er", "Belladonna-Opium", "Buprenorphine Hcl", "Carisoprodol Compound-Codeine", "Carisoprodol-Aspirin-Codeine", "Meperidine Hcl", "Butalb-Caff-Acetaminoph-Codein", "Butalbital-Acetaminophen-Caffe", "Acetaminophen-Butalbital", "Butalbital-Aspirin-Caffeine", "Levorphanol Tartrate", "Nalbuphine Hcl", "Oxycodone Concentrate", "Oxycodone Hcl", "Oxycodone Hcl-Aspirin", "Oxycodone Hcl-Ibuprofen", "Pentazocine-Acetaminophen", "Pentazocine-Naloxone Hcl"))) %>%
   dplyr::mutate(specialty_description = dplyr::recode(specialty_description, "Obstetrics & Gynecology" = "Obstetrics/Gynecology", "Obstetrics/Gynecology" = "Obstetrics/Gynecology")) %>%
-  #dplyr::inner_join(fpmrs_1269, by = c("npi" = "NPI"))  %>%  inner_join(FPMRS_1269_doctors, by = c("npi" = "NPI"))
   dplyr::arrange(desc(npi)) 
 beepr::beep(2)
 
@@ -305,7 +303,7 @@ perc_top_10_male <- ((sum(nrow(demographics_top_10 %>% filter(Provider.Gender.Co
 perc_top_10_male
 
 perc_other_90 <- drugs_all_years_fpmrs_only %>%
-  top_n(-90, bene_count) %>%
+  top_n(-90, total_claim_count) %>% #bene_count wrongly put here.  
   sample_rows(5, replace = TRUE, seed = 123456)
 
 perc_other_90_gender_denominator <- sum(nrow(perc_other_90))
@@ -360,4 +358,95 @@ leftover_opioid_pills <- format(round(sum(drugs_all_years_fpmrs_only$total_claim
 
 #For Manuscript:
 print(paste0("The frequencies of several risks associated with opioid use in the elderly, including addiction, gastrointestinal tract adverse effects (including constipation, nausea, and vomiting), central nervous system adverse effects (including dizziness, somnolence, and unsteadiness), and fracture, were identified from the literature (Table 3). We estimate that ", continue_opioids_past_one_year," beneficiaries could continue to use opioids one year after their prescription and ", continue_opioids_paste_three_year_low," to ", continue_opioids_paste_three_year_high," may continue to use them three years after their prescription. A total of ", gi_opioids_side_effects_low," to ", gi_opioids_side_effects_high ," beneficiaries could experience gastrointestinal tract or central nervous system adverse effects and ???", fracture_opioids_side_effects_low," to ?????",fracture_opioids_side_effects_high," ?????could experience fractures. We also estimate a remainder of ", leftover_opioid_pills," unused opioid pills in the community."))
+
+
+
+####################################################################################
+#table one 
+
+library(arsenal)
+require(knitr)
+require(survival)
+library(readr)
+library(magrittr)
+library(tidyverse)
+
+####################################################################################
+mycontrols  <- tableby.control(test=FALSE, total=FALSE,
+                               numeric.test="kwt", cat.test="chisq",
+                               numeric.stats=c("N", "medianq1q3"),
+                               cat.stats=c("countpct"),
+                               stats.labels=list(medianq1q3 = "Median (Q1, Q3)", N="n"),
+                               digits=1, digits.p=2, digits.pct=1,
+                               cat.simplify = FALSE)
+
+colnames(final)
+sum(is.na(final))
+
+####################################################################################
+#Create one dataframe for Table 1 with top 10 total claim counts versus bottom 90 total claim counts
+set.seed(123456)
+
+all_years_fpmrs_prescribers <- drugs_all_years_fpmrs_only %>%
+  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
+  distinct(npi, .keep_all = TRUE) %>%
+  select(-path, -npi, -nppes_provider_last_org_name, -nppes_provider_first_name, -nppes_provider_city, -nppes_provider_state, -specialty_description, -description_flag, -generic_name, -bene_count_ge65, -bene_count_ge65_suppress_flag, -total_claim_count_ge65, -ge65_suppress_flag, -total_30_day_fill_count_ge65, -total_day_supply_ge65, -total_drug_cost_ge65, -fullname1, -complete_address, -nppes.full.name.1, -Provider.First.Name, -Provider.Middle.Name, -Provider.Name.Suffix.Text, -Provider.Credential.Text, -Provider.First.Line.Business.Mailing.Address, -Provider.Business.Mailing.Address.City.Name, -Provider.Business.Mailing.Address.State.Name, -Provider.Business.Mailing.Address.Postal.Code, -Telephone1, -Fax, -Provider.First.Line.Business.Practice.Location.Address, -Provider.Business.Practice.Location.Address.City.Name, -Provider.Business.Practice.Location.Address.State.Name, -Provider.Business.Practice.Location.Address.Postal.Code, -Provider.Gender.Code, -Taxonomy1.Classification, -Taxonomy1.Specialization, -Taxonomy1.Notes, -Taxonomy2.Classification, -Taxonomy2.Specialization, -Taxonomy2.Notes,-`Year Of Birth`, -`Zip Code`) %>%
+  mutate(Age_extracted_from_graduation_date_from_med_school = (2020 - `Graduation year`) + 22, Age = coalesce(Age, Age_extracted_from_graduation_date_from_med_school)) %>%
+  clean_names(case = "parsed") %>%
+  select(-Age_extracted_from_graduation_date_from_med_school)
+
+#readr::write_rds(all_years_fpmrs_prescribers, "Data/all_years_fpmrs_prescribers.rds")
+
+demographics_top_10 <- drugs_all_years_fpmrs_only %>%
+  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
+  distinct(npi, .keep_all = TRUE) %>% 
+  top_n(10, total_claim_count) %>%
+  dplyr::mutate(Status = "demographics_top_10")
+dim(demographics_top_10)
+
+demographics_bottom_90 <- drugs_all_years_fpmrs_only %>%
+  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
+  distinct(npi, .keep_all = TRUE) %>% 
+  top_n(-90, total_claim_count) %>%
+  dplyr::mutate(Status = "demographics_bottom_90")
+dim(demographics_bottom_90)
+
+final <- bind_rows(demographics_top_10, demographics_bottom_90, .id=NULL)
+
+####################################################################################
+# arsenal table one
+dim(final)  ##look at how many subjects and variables are in the dataset 
+colnames(final)
+
+####################################################################################
+#get all the columns except for 'a'
+linearvars <- sort(colnames(all_years_fpmrs_prescribers)) #Use select with all_merged to remove variables that should not go into the model like year and location
+linearphrase <- paste(linearvars, collapse=" + ")
+
+#combine the linear terms with the rest of the formula
+paste0('~', linearphrase)
+
+# fullformula <- as.formula(paste0('~', linearphrase))
+# fullformula
+
+####################################################################################
+table1 <- arsenal::tableby(formula =  ~ #Age + gender + Specialty + Credentials_match + ACOG_Regions,
+                           drug_name + total_30_day_fill_count + total_claim_count + total_day_supply + bene_count,
+                           data= all_years_fpmrs_prescribers, 
+                           control = mycontrols)  #Jesus, Graduation year has to be in quotes
+
+summary(table1, text=TRUE, title="Table 1:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than Ten Opioid Claims and the Top 1% of Opioid Prescribers using the 2014-2017 Part D Prescriber Public Use File")
+
+####################################################################################
+table2 <- arsenal::tableby(formula =  ~ Age + gender + Specialty + Credentials_match + ACOG_Regions,
+                         #+ drug_name + total_30_day_fill_count + total_claim_count + total_day_supply + bene_count,
+                         data= all_years_fpmrs_prescribers, 
+                         control = mycontrols)  #Jesus, Graduation year has to be in quotes
+
+summary(table2, text=TRUE, title="Table 2:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than Ten Opioid Claims and the Top 1% of Opioid Prescribers using the 2014-2017 Part D Prescriber Public Use File")
+
+####################################################################################
+arsenal::write2word(tab1, "~/Dropbox (Personal)/Mystery shopper/mystery_shopper/Turner_study/Results/table1.doc")
+getwd()
+
 

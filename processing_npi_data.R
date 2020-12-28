@@ -231,7 +231,7 @@ number_of_opioid_claims_per_FPMRS
 
 mean(number_of_opioid_claims_per_FPMRS) 
 
-##
+#################################################################################################################################################
 ##
 ##
 # Here I think I can offer more a Discussion than an actually point:
@@ -257,18 +257,18 @@ drugs_all_years_fpmrs_only %>% summarise(
 # I can't say that has any meaning, but you could get the mean claim count among the mean per fpmrs and take the sd of the means
 ##
 ##
-##
+#################################################################################################################################################
 
 
 # I think I screwed this up here.  Can't get SD.  ???????????????
 # sd(number_of_opioid_claims_per_FPMRS)
 
-#Number of beneficiaries per FPMRS
+# Number of beneficiaries per FPMRS
 beneficiaries_per_FPMRS <- round((beneficiaries / number_of_FPMRS), 1)
 # where is this drugs variable? is it the drugs_all_years_fpmrs_only ?
 sd(drugs$Number_of_bene_per_FPMRS) #Not right.  ????????????????
 
-##
+#################################################################################################################################################
 ##
 ##
 # If drugs_all_years_fpmrs_only is the right variable, we could try the approach I used above
@@ -285,13 +285,13 @@ drugs_all_years_fpmrs_only %>% summarise(
 )
 ##
 ##
-##
+#################################################################################################################################################
 
-#Mean days’ supply per opioid claim
+# Mean days’ supply per opioid claim
 Mean_days_supply_per_opioid_claim = round(mean(drugs_all_years_fpmrs_only$total_day_supply/drugs_all_years_fpmrs_only$bene_count, na.rm = TRUE), 1)
 Mean_days_supply_per_opioid_claim
 
-#Mean opioid claims per beneficiary
+# Mean opioid claims per beneficiary
 Mean_opioid_claims_per_beneficiary = round((number_of_opioid_claims/beneficiaries),1)
 Mean_opioid_claims_per_beneficiary
 
@@ -385,12 +385,12 @@ Top_10_Mean_opioid_claims_per_beneficiary
 
 #Top 10 Mean days’ supply per opioid claim
 Top_10_Mean_days_supply_per_opioid_claim = mean(top10_opioid_prescribers$total_day_supply)
-####???????????????
-##
+#### ???????????????
+#################################################################################################################################################
 ##
 # Is it wrong somehow?
 ##
-##
+#################################################################################################################################################
 Top_10_Mean_days_supply_per_opioid_claim
 
 #For manuscript:
@@ -433,7 +433,7 @@ perc_top_10_male <- ((sum(nrow(demographics_top_10 %>% filter(Provider.Gender.Co
 perc_top_10_male
 
 perc_other_90 <- drugs_all_years_fpmrs_only %>%
-top_n(-90, total_claim_count) %>% #bene_count wrongly put here.  
+top_n(-90, total_claim_count) %>% # bene_count wrongly put here.  
 sample_rows(5, replace = TRUE, seed = 123456)
 
 perc_other_90_gender_denominator <- sum(nrow(perc_other_90))
@@ -471,11 +471,11 @@ print(
 two.way <- stats::aov(total_claim_count ~ ACOG_Regions, data = drugs_all_years_fpmrs_only)
 summary(two.way)
 
-#From the post-hoc test results, we see that there are significant differences (p < 0.05)
+# From the post-hoc test results, we see that there are significant differences (p < 0.05)
 tukey.two.way <- TukeyHSD(two.way)
 tukey.two.way
 
-#The significant groupwise differences are any where the 95% confidence interval doesn’t include zero.
+# The significant group wise differences are any where the 95% confidence interval doesn’t include zero.
 tukey.plot.aov <- aov(total_claim_count ~ ACOG_Regions, data = drugs_all_years_fpmrs_only)
 tukey.plot.test <- TukeyHSD(tukey.plot.aov)
 plot(tukey.plot.test, las = 1)
@@ -485,10 +485,10 @@ print(
   paste0(
     "FPMRS in ACOG district XII prescribed higher numbers of opioid claims per 1000 Medicare beneficiaries, 
     compared with FPMRS in the other ACOG districts (p < 0.01, Figure). 
-    ????Diego I'm not sure how to do this??????  
+    ???? Diego I'm not sure how to do this??????  
     Aggregated by region, FPMRS in the South prescribed 2.77 opioid claims per 1000 Medicare beneficiaries,
     compared with 1.60 in the West, 0.89 in the Midwest, and 0.83 in the Northeast (eTable 2 in the Supplement).
-    ????Diego I'm not sure how to do this??????"
+    ???? Diego I'm not sure how to do this??????"
   )
 )
 
@@ -517,13 +517,14 @@ fracture_opioids_side_effects_low <- format(round(beneficiaries * (531 / (1000 *
 # May you please explain what the index mean? Like a formal definition.
 ##
 ##
-#531 per person-years, The calculation can be accomplished by adding the number of patients in the group and multiplying that 
+# 531 per person-years, The calculation can be accomplished by adding the number of patients in the group and multiplying that 
 # number times the years that patients are in a study in order to calculate the patient-years (denominator). Then divide the 
 # number of events (numerator) by the denominator
-# ???????????I don't think this is right Diego.  I've got to figure out person-years.  ????????
+# ??????????? I don't think this is right Diego.  I've got to figure out person-years.  ????????
 fracture_opioids_side_effects_low
 
-fracture_opioids_side_effects_high <- format(round(beneficiaries * (902 / 1000 * 4), digits = 0), big.mark = ",") #902 per person-years
+fracture_opioids_side_effects_high <- format(round(beneficiaries * (902 / 1000 * 4), digits = 0), big.mark = ",") 
+# 902 per person-years
 # ?????????????????????????
 
 leftover_opioid_pills <-

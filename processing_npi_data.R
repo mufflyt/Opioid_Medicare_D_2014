@@ -1,6 +1,6 @@
-#############################################################3
+####################################################################################
 # Brings in NPI file that contains demographics of physicians: gender, location with zip code, specialty, start date based on Provider.Enumeration.Date.  
-
+####################################################################################
 
 # Set libPaths.
 .libPaths("/Users/tylermuffly/.exploratory/R/4.0")
@@ -20,10 +20,30 @@ library(bit64)
 library(exploratory)
 library(english)
 
+library(arsenal)
+require(knitr)
+require(survival)
+library(readr)
+library(magrittr)
+library(tidyverse)
+library(beepr)
+#devtools::install_dev("vroom")
+library(vroom)
+#install.packages("connections")
+library(connections)
+library(fs)
+
+####################################################################################
 # National Uniform Claim Committee
 # Crosswalk of all taxonomy codes to their text descriptions.  
 # https://www.nucc.org/index.php/code-sets-mainmenu-41/provider-taxonomy-mainmenu-40/csv-mainmenu-57
 # Steps to produce nucc_taxonomy_201
+<<<<<<< HEAD
+####################################################################################
+`nucc_taxonomy_201` <- exploratory::read_delim_file("/Users/tylermuffly/Dropbox (Personal)/Opioid_Medicare_D_2014/Data/NUCC/nucc_taxonomy_201.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert() %>%
+  exploratory::clean_data_frame() %>%
+=======
 `nucc_taxonomy_201` <- exploratory::read_delim_file("data/nucc_taxonomy_201.csv" , ",", quote = "\"", skip = 0, 
                                                     col_names = TRUE , na = c('', 'NA'), locale = readr::locale(
                                                       encoding = "UTF-8",
@@ -35,14 +55,15 @@ library(english)
                                                     progress = FALSE) %>% 
   readr::type_convert(.) %>%
   exploratory::clean_data_frame(.) %>%
+>>>>>>> 293560c03b8d4f41f666f50f2e100b4cec274c00
   filter(Grouping == "Allopathic & Osteopathic Physicians") %>%
   select(-Grouping, -Definition)
 
-
-
+####################################################################################
 # NPPES Data Dissemination file - Listof every physician in the USA with a unique ID number called an NPI (National Provider Identification number).   
 # https://download.cms.gov/nppes/NPI_Files.html
 # NPPES ----
+####################################################################################
 cls_end <- replicate(270, "NULL")
 cls_begin <- replicate(60, NA)
 cls <- append(cls_begin, cls_end)
@@ -52,9 +73,14 @@ NPPES <- read.csv("Data/npidata_pfile_20050523-20200913.csv", stringsAsFactors =
 invisible(gc())
 
 colnames(NPPES)
+<<<<<<< HEAD
+#install.packages("beepr")
+beepr:beep(3)
+=======
 # install.packages("beepr")
 library(beepr)
 beepr::beep(3)		# to access exported functions you need to use a ::
+>>>>>>> 293560c03b8d4f41f666f50f2e100b4cec274c00
 
 #####
 NPPES1 <- NPPES %>%
@@ -120,7 +146,12 @@ head(NPPES1)
 ############################################################################
 # Drug Prescriptions ---------------
 # Read in all FPMRS
+<<<<<<< HEAD
+####################################################################################
+fpmrs_1269 <- read_csv("/Users/tylermuffly/Dropbox (Personal)/workforce/Referenced_data/FPMRS_1269_doctors.csv") %>%
+=======
 fpmrs_1269 <- read_csv("data/FPMRS_1269_doctors.csv") %>%
+>>>>>>> 293560c03b8d4f41f666f50f2e100b4cec274c00
   dplyr::select(fullname1, complete_address, Specialty, NPI, Credentials_match, gender, Age, `Year Of Birth`, ACOG_Regions, `Graduation year`, `Zip Code`)
 dim(fpmrs_1269)
 
@@ -128,15 +159,9 @@ dim(fpmrs_1269)
 # Drug Prescriptions ---------------
 # Bring in drug data for FPMRS physicians
 # Need to inner join the FPMRS NPI numbers with the NPI numbers for the drug prescribers 
-
-#devtools::install_dev("vroom")
-library(vroom)
-
-#install.packages("connections")
-library(connections)
+####################################################################################
 
 #Read in all the drug files at once because they are in one directory
-library(fs)
 fs::dir_ls()
 file_paths <- fs::dir_ls("Data/Drugs") #Location of the PUF Drug files downloaded, PartD_Prescriber_PUF_NPI_Drug_13.txt
 fs::file_size(file_paths) 
@@ -178,8 +203,9 @@ colnames(drugs_all_years_fpmrs_only)
 View(head(drugs_all_years_fpmrs_only))
 
 
-#############################################################################################3
+####################################################################################
 # Start the results section here please.  
+####################################################################################
 
 #Number of FPMRS who prescribed narcotics.  
 dim(opioidRX)
@@ -465,8 +491,6 @@ print(
   )
 )
 
-
-
 ##########################################################################
 # ANOVA of ACOG region and total claim count
 two.way <- stats::aov(total_claim_count ~ ACOG_Regions, data = drugs_all_years_fpmrs_only)
@@ -571,17 +595,60 @@ print(
 
 
 ####################################################################################
-#table one 
-
-library(arsenal)
-require(knitr)
-require(survival)
-library(readr)
-library(magrittr)
-library(tidyverse)
+#Tables start here
+####################################################################################
 
 ####################################################################################
-mycontrols  <- tableby.control(test=FALSE, total=FALSE,
+#Create one dataframe for Table 1 with top 10 total claim counts versus bottom 90 total claim counts
+####################################################################################
+set.seed(123456)
+
+all_years_fpmrs_prescribers <- drugs_all_years_fpmrs_only %>%
+  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
+  distinct(npi, .keep_all = TRUE) %>%
+  select(-path, -nppes_provider_last_org_name, -nppes_provider_first_name, -nppes_provider_city, -nppes_provider_state, -specialty_description, -description_flag, -generic_name, -bene_count_ge65, -bene_count_ge65_suppress_flag, -total_claim_count_ge65, -ge65_suppress_flag, -total_30_day_fill_count_ge65, -total_day_supply_ge65, -total_drug_cost_ge65, -fullname1, -complete_address, -nppes.full.name.1, -Provider.First.Name, -Provider.Middle.Name, -Provider.Name.Suffix.Text, -Provider.Credential.Text, -Provider.First.Line.Business.Mailing.Address, -Provider.Business.Mailing.Address.City.Name, -Provider.Business.Mailing.Address.State.Name, -Provider.Business.Mailing.Address.Postal.Code, -Telephone1, -Fax, -Provider.First.Line.Business.Practice.Location.Address, -Provider.Business.Practice.Location.Address.City.Name, -Provider.Business.Practice.Location.Address.State.Name, -Provider.Business.Practice.Location.Address.Postal.Code, -Provider.Gender.Code, -Taxonomy1.Classification, -Taxonomy1.Specialization, -Taxonomy1.Notes, -Taxonomy2.Classification, -Taxonomy2.Specialization, -Taxonomy2.Notes,-`Year Of Birth`, -`Zip Code`) %>%
+  mutate(Age_extracted_from_graduation_date_from_med_school = (2020 - `Graduation year`) + 22, Age = coalesce(Age, Age_extracted_from_graduation_date_from_med_school)) %>%  #Fill in NAs in one column from another column.  
+  clean_names(case = "parsed") %>%
+  select(-Age_extracted_from_graduation_date_from_med_school) %>%
+  mutate(Years_from_NPI_enumeration = 2020 - year(Provider_Enumeration_Date)) %>%
+  select(-Provider_Enumeration_Date) %>%
+  mutate(`Years of experience` = cut(Years_from_NPI_enumeration, breaks = c(-Inf, 11, 12, 13, 14, Inf), labels = c("Less than 10 years", "11 years", "12 years", "13 years", "14 years and greater"), include.lowest = TRUE, dig.lab = 10)) %>%
+  mutate(ACOG_Regions = fct_relevel(ACOG_Regions, "District I", "District II", "District III", "District IV", "District V", "District VI", "District VII", "District VIII", "District IX", "District XI", "District XII")) %>% # Creates an ordered variable based on manual setting of District
+  mutate(Age_category = cut(Age, breaks = c(-Inf, 28, 44, 60, Inf), labels = c("Less than 28 years old", "28 to 43.9 years old", "44 to 59.9 years old", "Greater than or equal to 60 years old"), include.lowest = TRUE, dig.lab = 10)) %>% #Make age categories
+  mutate(drug_name = fct_infreq(drug_name)) %>%
+  mutate(drug_name = fct_infreq(drug_name), drug_name = fct_lump(drug_name, n = 5, ties.method ="first")) # Creates an ordered variable of the drug names based on frequency and lumps together any drug with 5 observations.  
+#readr::write_rds(all_years_fpmrs_prescribers, "Data/all_years_fpmrs_prescribers.rds")
+
+
+#SO:  https://stackoverflow.com/questions/1563961/how-to-find-top-n-of-records-in-a-column-of-a-dataframe-using-r
+# n <- 5
+# data[data$V2 > quantile(data$V2,prob=1-n/100),]
+
+#demographics_top_10 
+demographics <- all_years_fpmrs_prescribers %>%
+  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
+  distinct(npi, .keep_all = TRUE) %>% 
+  #top_n(10, total_claim_count) %>% #Keep the top 10 prescribers who make the most claim counts
+  dplyr::mutate(Status = "Top 5% of Opioid Prescribers")
+
+n <- 5 # For the top 1% put in 1
+demographics_top <- demographics[demographics$total_claim_count > quantile(demographics$total_claim_count,prob=1-n/100),]
+dim(demographics_top)
+
+demographics_bottom <- all_years_fpmrs_prescribers %>%
+  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
+  distinct(npi, .keep_all = TRUE) %>% 
+  anti_join(demographics_top, by = c("npi" = "npi")) %>%  #Creates a list of everyone else who is not in demographics_top
+  dplyr::mutate(Status = "FPMRS Prescribing >10 Opioid Claims")
+dim(demographics_bottom)
+
+final <- bind_rows(demographics_top, demographics_bottom, .id=NULL)
+final$Status
+
+####################################################################################
+# Tables
+####################################################################################
+mycontrols1  <- tableby.control(test=FALSE, total=FALSE,
                                numeric.test="kwt", cat.test="chisq",
                                numeric.stats=c("N", "medianq1q3"),
                                cat.stats=c("countpct"),
@@ -589,52 +656,19 @@ mycontrols  <- tableby.control(test=FALSE, total=FALSE,
                                digits=1, digits.p=2, digits.pct=1,
                                cat.simplify = FALSE)
 
-colnames(final)
-sum(is.na(final))
+mycontrols2  <- tableby.control(test=TRUE, total=FALSE,
+                                numeric.test="kwt", cat.test="chisq",
+                                numeric.stats=c("N", "medianq1q3"),
+                                cat.stats=c("countpct"),
+                                stats.labels=list(medianq1q3 = "Median (Q1, Q3)", N="n"),
+                                digits=1, digits.p=2, digits.pct=1,
+                                cat.simplify = FALSE)
 
-####################################################################################
-#Create one dataframe for Table 1 with top 10 total claim counts versus bottom 90 total claim counts
-set.seed(123456)
-
-all_years_fpmrs_prescribers <- drugs_all_years_fpmrs_only %>%
-  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
-  distinct(npi, .keep_all = TRUE) %>%
-  select(-path, -npi, -nppes_provider_last_org_name, -nppes_provider_first_name, -nppes_provider_city, -nppes_provider_state, -specialty_description, -description_flag, -generic_name, -bene_count_ge65, -bene_count_ge65_suppress_flag, -total_claim_count_ge65, -ge65_suppress_flag, -total_30_day_fill_count_ge65, -total_day_supply_ge65, -total_drug_cost_ge65, -fullname1, -complete_address, -nppes.full.name.1, -Provider.First.Name, -Provider.Middle.Name, -Provider.Name.Suffix.Text, -Provider.Credential.Text, -Provider.First.Line.Business.Mailing.Address, -Provider.Business.Mailing.Address.City.Name, -Provider.Business.Mailing.Address.State.Name, -Provider.Business.Mailing.Address.Postal.Code, -Telephone1, -Fax, -Provider.First.Line.Business.Practice.Location.Address, -Provider.Business.Practice.Location.Address.City.Name, -Provider.Business.Practice.Location.Address.State.Name, -Provider.Business.Practice.Location.Address.Postal.Code, -Provider.Gender.Code, -Taxonomy1.Classification, -Taxonomy1.Specialization, -Taxonomy1.Notes, -Taxonomy2.Classification, -Taxonomy2.Specialization, -Taxonomy2.Notes,-`Year Of Birth`, -`Zip Code`) %>%
-  mutate(Age_extracted_from_graduation_date_from_med_school = (2020 - `Graduation year`) + 22, Age = coalesce(Age, Age_extracted_from_graduation_date_from_med_school)) %>%
-  clean_names(case = "parsed") %>%
-  select(-Age_extracted_from_graduation_date_from_med_school) %>%
-  mutate(Years_from_NPI_enumeration = 2020 - year(Provider_Enumeration_Date)) %>%
-  select(-Provider_Enumeration_Date) %>%
-  mutate(`Years of experience` = cut(Years_from_NPI_enumeration, breaks = c(-Inf, 11, 12, 13, 14, Inf), labels = c("Less than 10 years", "11 years", "12 years", "13 years", "14 years and greater"), include.lowest = TRUE, dig.lab = 10)) %>%
-  mutate(ACOG_Regions = fct_relevel(ACOG_Regions, "District I", "District II", "District III", "District IV", "District V", "District VI", "District VII", "District VIII", "District IX", "District XI", "District XII")) %>%
-  mutate(Age_category = cut(Age, breaks = c(-Inf, 28, 44, 60, Inf), labels = c("Less than 28 years old", "28 to 43.9 years old", "44 to 59.9 years old", "Greater than or equal to 60 years old"), include.lowest = TRUE, dig.lab = 10))
-
-#readr::write_rds(all_years_fpmrs_prescribers, "Data/all_years_fpmrs_prescribers.rds")
-
-demographics_top_10 <- drugs_all_years_fpmrs_only %>%
-  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
-  distinct(npi, .keep_all = TRUE) %>% 
-  top_n(10, total_claim_count) %>%
-  dplyr::mutate(Status = "demographics_top_10")
-dim(demographics_top_10)
-
-demographics_bottom_90 <- drugs_all_years_fpmrs_only %>%
-  inner_join(NPPES1, by = c("npi" = "NPI")) %>%
-  distinct(npi, .keep_all = TRUE) %>% 
-  top_n(-90, total_claim_count) %>%
-  dplyr::mutate(Status = "demographics_bottom_90")
-dim(demographics_bottom_90)
-
-final <- bind_rows(demographics_top_10, demographics_bottom_90, .id=NULL)
-
-####################################################################################
-# arsenal table one
 dim(final)  ##look at how many subjects and variables are in the dataset 
 colnames(final)
 
 ####################################################################################
-#get all the columns except for 'a'
-linearvars <- sort(colnames(all_years_fpmrs_prescribers)) #Use select with all_merged to remove variables that should not go into the model like year and location
+linearvars <- sort(colnames(final)) 
 linearphrase <- paste(linearvars, collapse=" + ")
 
 #combine the linear terms with the rest of the formula
@@ -644,22 +678,31 @@ paste0('~', linearphrase)
 # fullformula
 
 ####################################################################################
-table1 <- arsenal::tableby(formula =  ~ bene_count + drug_name + total_30_day_fill_count + total_claim_count + total_day_supply,
-                           data= all_years_fpmrs_prescribers, 
-                           control = mycontrols) 
+# Table 1
+####################################################################################
+table1 <- arsenal::tableby(formula = Status ~ bene_count + drug_name + total_30_day_fill_count + total_claim_count + total_day_supply,
+                           data= final, 
+                           control = mycontrols1) 
 
-summary(table1, text=TRUE, title="Table 1:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than 10 Opioid Claims and the Top 1% of Opioid Prescribers Using the 2014 Part D Prescriber Public Use File")
+mylabels1 <- list(Status = "Characteristic", bene_count ="Number of beneficiaries", drug_name = "Type of opioid", total_30_day_fill_count = "Number of Medicare Part D 30-day fills", total_claim_count = "Number of Medicare Part D claims", total_day_supply = "Number of day’s supply")
+
+summary(table1, text=TRUE, title="Table 1:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than 10 Opioid Claims and the Top 5% of Opioid Prescribers Using the 2014-2017 Part D Prescriber Public Use File", labelTranslations = mylabels1)
+arsenal::write2word(table1, "table1.doc")
+
 
 ####################################################################################
-table2 <- arsenal::tableby(formula =  ~ Age_category + gender + Specialty + Credentials_match + `Years of experience` + ACOG_Regions,
+# Table 2
+####################################################################################
+table2 <- arsenal::tableby(formula =  Status ~ Age_category + gender + Specialty + Credentials_match + `Years of experience` + ACOG_Regions,
                          #+ drug_name + total_30_day_fill_count + total_claim_count + total_day_supply + bene_count,
-                         data= all_years_fpmrs_prescribers, 
-                         control = mycontrols)  #Jesus, Graduation year has to be in quotes
+                         data= final, 
+                         control = mycontrols2)  #Jesus, Graduation year has to be in quotes
 
-summary(table2, text=TRUE, title="Table 2:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than Ten Opioid Claims and the Top 1% of Opioid Prescribers using the 2014-2017 Part D Prescriber Public Use File")
+mylabels2 <- list(Status = "Characteristic", Age_category = "Age, years", gender = "Gender", Specialty = "Residency training", Credentials_match = "Medical school training", `Years of experience` = "Years of experience", ACOG_Regions = "American Congress of Obstetricians and Gynecologists District")
 
-####################################################################################
-arsenal::write2word(tab1, "~/Dropbox (Personal)/Mystery shopper/mystery_shopper/Turner_study/Results/table1.doc")
+summary(table2, text=TRUE, title="Table 2:  Current Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons Prescribing More Than Ten Opioid Claims and the Top 5% of Opioid Prescribers using the 2014-2017 Part D Prescriber Public Use File", labelTranslations = mylabels2)
+
+arsenal::write2word(table2, "table2.doc")
 getwd()
 
 

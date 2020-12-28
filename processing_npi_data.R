@@ -392,7 +392,7 @@ Top_10_Mean_days_supply_per_opioid_claim = mean(top10_opioid_prescribers$total_d
 ##
 #################################################################################################################################################
 Top_10_Mean_days_supply_per_opioid_claim
-
+# Check these lines below
 #For manuscript:
 print(
   paste0(
@@ -400,9 +400,10 @@ print(
     percent_claims_top10_opioid_prescribers,
     "% of opioid claims and prescribed a total of ",
     format(top_10_number_of_opioid_claims, big.mark = ","),
-    " opioid claims. Each FPMRS prescribed a mean (SD) of ",
+    " opioid claims. Each FPMRS prescribed a mean of ", 
     top_10_mean_claims,
-    " (SD?????????) opioid claims, and each beneficiary received a mean of ",
+    " (SD=", round(sd(top10_opioid_prescribers$bene_count, na.rm = TRUE),1), ") ",
+    "opioid claims, and each beneficiary received a mean of ",
     Top_10_Mean_opioid_claims_per_beneficiary,
     " opioid claims, with a supply of ",
     format(Top_10_Mean_days_supply_per_opioid_claim, big.mark = ","),
@@ -481,6 +482,7 @@ tukey.plot.test <- TukeyHSD(tukey.plot.aov)
 plot(tukey.plot.test, las = 1)
 
 #For Manuscript:
+#
 print(
   paste0(
     "FPMRS in ACOG district XII prescribed higher numbers of opioid claims per 1000 Medicare beneficiaries, 
@@ -491,6 +493,15 @@ print(
     ???? Diego I'm not sure how to do this??????"
   )
 )
+# Where these values came from?
+# Not sure it is what you want but try this:
+drugs_all_years_fpmrs_only %>% group_by(ACOG_Regions) %>% summarise(
+  claims = sum(total_claim_count, na.rm = TRUE),
+  benes = sum(bene_count, na.rm = TRUE),
+  claims / benes
+)
+
+
 
 ###########################
 continue_opioids_past_one_year <- format(round(beneficiaries * 0.051, digits = 0), big.mark = ",")

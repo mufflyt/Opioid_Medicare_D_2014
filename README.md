@@ -39,11 +39,14 @@ https://github.com/semerj/nppes-postgres
 
 # Clean Data
 #### Replace empty "" integer fields in NPI CSV file
-$ sed 's/""//g' npidata_20050523-20160110.csv > npi.csv
+$ sed 's/""//g' npidata_pfile_20050523-20201213.csv > npi.csv
+
+### Install csvformat
+$ sudo pip install csvkit
 
 #### Convert taxonomy data to utf-8 and tab delimited
-$ iconv -c -t utf8 nucc_taxonomy_160.csv | csvformat -T > taxonomy.tab
+$ iconv -c -t utf8 nucc_taxonomy_201.csv | csvformat -T > taxonomy.tab
 
 #### Create npi Database and Import Data
 $ createdb -O [USERNAME] [DBNAME]
-$ ./create_npi_db.sh [USERNAME] [DBNAME] /full/path/npi.csv /full/path/taxonomy.tab
+$ ./create_npi_db.sh tylermuffly referral /Users/tylermuffly/Dropbox (Personal)/obgyn_surg/data/NPI/npi.csv /Users/tylermuffly/Dropbox (Personal)/obgyn_surg/data/NPI/taxonomy.tab

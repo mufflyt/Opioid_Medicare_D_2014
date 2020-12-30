@@ -32,7 +32,8 @@ Opioid Prescribing Pattenrs and Complications in the Dermatology Medicare Popula
 
 * Part D Prescriber data that highlights the total numbers of drug classes prescribed - https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Medicare-Provider-Charge-Data/Part-D-Prescriber
 * Physicians Shared Patient Data - https://www.nber.org/research/data/physician-shared-patient-patterns-data.  We used the 180 day time windows.  
-* 
+
+* Very good review - https://github.com/jasonbxu/psql
 
 # How to plut NPI file into a postgres database
 https://github.com/semerj/nppes-postgres

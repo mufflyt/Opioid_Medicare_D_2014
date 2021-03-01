@@ -16,6 +16,7 @@ library(bit64)
 library(exploratory)
 library(ggplot2)
 library(ggridges)
+library(tidyverse)
 
 # Steps to produce Medicare_Part_D_Opioid_Prescriber_Summary_File_2017
 `Medicare_Part_D_Opioid_Prescriber_Summary_File_2017` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2017.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
@@ -33,6 +34,7 @@ library(ggridges)
 `Medicare_Part_D_Opioid_Prescriber_Summary_File_2015` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2015.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert(.) %>%
   exploratory::clean_data_frame(.)
+`Medicare_Part_D_Opioid_Prescriber_Summary_File_2015` <- as.numeric(Medicare_Part_D_Opioid_Prescriber_Summary_File_2015$`NPPES Provider ZIP Code`)
 
 # Steps to produce Medicare_Part_D_Opioid_Prescriber_Summary_File_2014
 `Medicare_Part_D_Opioid_Prescriber_Summary_File_2014` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2014.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
@@ -145,7 +147,7 @@ FPMRS_OpioidRidgePlot <- ggplot(FPMRS_OpioidRXState,  aes(x = RXRate, y = reorde
         legend.justification = "center",
         legend.title = element_text(hjust = 0.5, angle = 0, size = 10),
         plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_text(margin = margin(5, 0, 5, 5), size = 10),
+        axis.text.y = element_text(margin = margin(5, 0, 5, 5), size = 8),
         axis.text.x = element_text(margin = margin(5, 5, 25, 5), hjust = 0, vjust = 0))
 FPMRS_OpioidRidgePlot
 
@@ -213,7 +215,7 @@ OpioidHeatMap <- ggplot(TidyOpioidRX, aes(x = reorder(Specialty, SpecialtyMedian
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
   theme(axis.text.y = element_text(hjust = 0.25, size = 8)) +
   labs(fill = "% Opioid of Total Prescriptions",
-       title = "Medicare Opioid Prescription Rates By Specialty & State (2013 to 2017)\n",
+       title = "Medicare Opioid Prescription Rates \n By Specialty & State (2013 to 2017)\n",
        x = "",
        y = "State Overdose Death Rate Per 100,000") +
   coord_fixed(ratio = .5) +

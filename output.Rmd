@@ -1,0 +1,177 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 8, collapse = TRUE, include = FALSE)
+```
+
+```{r libs}
+library(dplyr)
+library(janitor)
+library(lubridate)
+library(hms)
+library(tidyr)
+library(stringr)
+library(readr)
+library(forcats)
+library(RcppRoll)
+library(dplyr)
+library(tibble)
+library(bit64)
+library(exploratory)
+library(ggplot2)
+library(ggridges)
+```
+
+```{r Load_data}
+
+`MPDOPS_2017` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2017.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert(.) %>% 
+  rename(`Extended-Release Opioid Prescribing Rate` = `Long-Acting Opioid Prescribing Rate`) %>%
+  rename(`Extended-Release Opioid Claims` = `Long-Acting Opioid Claim Count`) %>%
+  exploratory::clean_data_frame(.)
+
+`MPDOPS_2016` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2016.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert(.) %>%
+  exploratory::clean_data_frame(.)
+
+`MPDOPS_2015` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2015.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert(.) %>%
+  exploratory::clean_data_frame(.)
+
+`MPDOPS_2014` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2014.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert(.) %>%
+  exploratory::clean_data_frame(.)
+
+`MPDOPS_2013` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2013.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert(.) %>%
+  exploratory::clean_data_frame(.)
+
+```
+
+```{r merge_data}
+FPMRS <- read.csv("Data/FPMRS_1269_doctors.csv")
+
+MPDOPS <- MPDOPS_2014 %>% 
+  rename(`NPPES Provider ZIP Code` = `NPPES Provider Zip Code`) %>%
+  rename(`NPPES Provider Last Name` = `NPPES Provider Last/Org Name`) %>%
+  bind_rows(MPDOPS_2013, MPDOPS_2015, MPDOPS_2016, MPDOPS_2017, 
+            id_column_name = "ID", current_df_name = "MPDOPS_2014",
+            force_data_type = TRUE
+            )
+
+opioidRX <-  MPDOPS %>% 
+  mutate_at(vars(`Opioid Prescribing Rate`, 
+                 `Extended-Release Opioid Prescribing Rate`), 
+            funs(parse_number)) %>%
+  mutate_at(vars(ID, NPI, `NPPES Provider Last Name`, 
+                 `NPPES Provider First Name`, `NPPES Provider ZIP Code`, 
+                 `NPPES Provider State`, `Specialty Description`), 
+            funs(factor)) %>% arrange(desc(NPI)) %>%
+  mutate(`Specialty Description` = factor(`Specialty Description`)) %>%
+  filter(NPI %in% FPMRS$NPI) %>% 
+  mutate(RXRate = `Opioid Claim Count`/`Total Claim Count`) %>%
+  filter(!is.na(RXRate)) %>%
+  rename(Specialty = `Specialty Description`) %>%
+  mutate(Specialty = factor(Specialty)) %>%
+  rename(State = `NPPES Provider State`) %>%
+  mutate(State = factor(State)) %>%
+  mutate(`NPPES Provider ZIP Code` = factor(`NPPES Provider ZIP Code`)) %>%
+  rename(Zip = `NPPES Provider ZIP Code`) %>%
+  filter(State %nin% c("AA", "AE", "AP", "AS", "GU", "MP", "VI", "ZZ", "XX")) %>%
+  mutate(State = fct_drop(State)) %>%
+  group_by(NPI) %>% mutate(Specialty = "FPMRS") %>% 
+  mutate(MedianBySpecialty = median(RXRate, na.rm = TRUE), 
+         `Extended-Release Opioid Claims` = impute_na(`Extended-Release Opioid Claims`, type = "value", val = "0"), 
+         `Extended-Release Opioid Prescribing Rate` = impute_na(`Extended-Release Opioid Prescribing Rate`,
+                                                                type = "value", val = "0")) %>%
+  rename(Year = ID) %>%
+  mutate_at(vars(`Opioid Claim Count`, `Opioid Prescribing Rate`,
+                 `Extended-Release Opioid Claims`, 
+                 `Extended-Release Opioid Prescribing Rate`), 
+            funs(parse_number)) %>%
+  ungroup() 
+
+
+
+```
+
+```{r load_db }
+
+library(DBI)
+library(tidyverse)
+#
+current_working_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+setwd(current_working_dir)
+batch <- as.integer(Sys.time())
+#
+db <- 'Data/PUF/PUF.db'
+con <- dbConnect(RSQLite::SQLite(), db)
+PUF_13 <- tbl(con, "PUF_13")
+PUF_14 <- tbl(con, "PUF_14")
+PUF_15 <- tbl(con, "PUF_15")
+PUF_16 <- tbl(con, "PUF_16")
+PUF_17 <- tbl(con, "PUF_17")
+
+```
+
+```{r include = FALSE}
+library(dplyr)
+
+rmd_total_fpmrs <- opioidRX %>% select(NPI) %>% unique() %>% ungroup() %>%
+  count() %>% unlist(use.names = FALSE)
+
+rmd_fpmrs_data <- opioidRX %>% group_by(NPI) %>% 
+  summarise(`Opioid Claim Count` = round(mean(`Opioid Claim Count`),0)) %>% ungroup() %>% summarise(
+  LE10 = sum(`Opioid Claim Count` <= 10),
+  GT10 = sum(`Opioid Claim Count` > 10)) %>% 
+  mutate(P_LE10 = round(100*LE10/(LE10 + GT10),0), 
+         P_GT10 = round(100*GT10/(LE10 + GT10),0))
+
+fpmrs_GE10 <- opioidRX %>% group_by(NPI) %>% 
+  summarise(`Opioid Claim Count` = round(mean(`Opioid Claim Count`),0)) %>% ungroup() %>% filter(`Opioid Claim Count` >= 10) %>%
+  select(NPI) %>% unique() %>% ungroup() %>% 
+  unlist(use.names = FALSE)
+
+```
+
+A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.  
+
+```{r query_1}
+fpmrs_GE10_PUF_13 <- PUF_13 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
+fpmrs_GE10_PUF_14 <- PUF_14 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
+fpmrs_GE10_PUF_15 <- PUF_15 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
+fpmrs_GE10_PUF_16 <- PUF_16 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
+fpmrs_GE10_PUF_17 <- PUF_17 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
+
+claims <- fpmrs_GE10_PUF_13 %>% bind_rows(fpmrs_GE10_PUF_14, fpmrs_GE10_PUF_15,
+                                          fpmrs_GE10_PUF_16, fpmrs_GE10_PUF_17, 
+            id_column_name = "ID", current_df_name = "fpmrs_GE10_PUF_13",
+            force_data_type = TRUE
+            )
+total_count <- claims %>% summarise(total_bene_count = sum(na.omit(bene_count)),
+                     total_claim_count = sum(na.omit(total_claim_count)))
+
+stats_claims <- claims %>% summarise(sd_claim = sd(total_claim_count, na.rm = TRUE),
+                                     mean_claim = mean(total_claim_count, na.rm = TRUE),
+                                     sd_bene = sd(bene_count, na.rm = TRUE),
+                                     mean_bene = mean(bene_count, na.rm = TRUE))
+
+```
+
+Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of `r total_count$total_claim_count` opioid claims were prescribed to `r total_count$total_bene_count` beneficiaries (Table 1).  Each FPMRS prescribed to a mean (SD) of `r stats_claims$mean_claim` (`r stats_claims$sd_claim`) opioid claims to a mean of `r stats_claims$mean_bene` (`stats_claims$sd_bene`) beneficiaries.  
+
+Each beneficiary received a mean of `r round(stats_claims$mean_claim/stats_claims$mean_bene,1)` opioid claims, with a supply lasting a mean of 6.8days.  
+
+```{r drug_stats}
+
+stats_drugs <- claims %>% group_by(drug_name) %>% 
+  summarise(total = sum(total_claim_count)) %>% arrange(desc(total))
+
+```
+
+Combination hydrocodone and acetaminophen accounted for 1,478 opioid claims (46.3%), oxycodone acetaminophen 1,042 opioid claims (32.6%), followed by tramadol hydrochloride 275 opioid claims (8.6%), and lastly oxycodone 170 opioid claims (5.3%).

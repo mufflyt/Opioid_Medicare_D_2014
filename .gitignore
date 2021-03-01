@@ -2,3 +2,5 @@
 *.rds
 *.txt
 *.RData
+*.db
+Data/*

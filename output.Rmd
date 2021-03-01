@@ -153,19 +153,21 @@ claims <- fpmrs_GE10_PUF_13 %>% bind_rows(fpmrs_GE10_PUF_14, fpmrs_GE10_PUF_15,
             id_column_name = "ID", current_df_name = "fpmrs_GE10_PUF_13",
             force_data_type = TRUE
             )
+
 total_count <- claims %>% summarise(total_bene_count = sum(na.omit(bene_count)),
                      total_claim_count = sum(na.omit(total_claim_count)))
 
 stats_claims <- claims %>% summarise(sd_claim = sd(total_claim_count, na.rm = TRUE),
                                      mean_claim = mean(total_claim_count, na.rm = TRUE),
                                      sd_bene = sd(bene_count, na.rm = TRUE),
-                                     mean_bene = mean(bene_count, na.rm = TRUE))
+                                     mean_bene = mean(bene_count, na.rm = TRUE),
+                                     mean_supply = mean(total_day_supply/total_30_day_fill_count, na.rm = TRUE))
 
 ```
 
-Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of `r total_count$total_claim_count` opioid claims were prescribed to `r total_count$total_bene_count` beneficiaries (Table 1).  Each FPMRS prescribed to a mean (SD) of `r stats_claims$mean_claim` (`r stats_claims$sd_claim`) opioid claims to a mean of `r stats_claims$mean_bene` (`stats_claims$sd_bene`) beneficiaries.  
+Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of `r round(total_count$total_claim_count, 0)` opioid claims were prescribed to `r round(total_count$total_bene_count, 0)` beneficiaries (Table 1).  Each FPMRS prescribed to a mean (SD) of `r round(stats_claims$mean_claim, 0)` (`r round(stats_claims$sd_claim, 0)`) opioid claims to a mean of `r round(stats_claims$mean_bene, 0)` (`r round(stats_claims$sd_bene, 0)`) beneficiaries.  
 
-Each beneficiary received a mean of `r round(stats_claims$mean_claim/stats_claims$mean_bene,1)` opioid claims, with a supply lasting a mean of 6.8days.  
+Each beneficiary received a mean of `r round(stats_claims$mean_claim/stats_claims$mean_bene,1)` opioid claims, with a supply lasting a mean of `r round(stats_claims$mean_supply, 0)` days.  
 
 ```{r drug_stats}
 
@@ -175,3 +177,17 @@ stats_drugs <- claims %>% group_by(drug_name) %>%
 ```
 
 Combination hydrocodone and acetaminophen accounted for 1,478 opioid claims (46.3%), oxycodone acetaminophen 1,042 opioid claims (32.6%), followed by tramadol hydrochloride 275 opioid claims (8.6%), and lastly oxycodone 170 opioid claims (5.3%).
+
+
+```{r region_count}
+
+
+city_count <- claims %>% group_by(nppes_provider_city) %>% 
+  summarise(total = mean(total_claim_count)) %>% arrange(total)
+
+state_count <- claims %>% group_by(nppes_provider_state) %>% 
+  summarise(total = mean(total_claim_count)) %>% arrange(total)
+
+
+```
+The median opioid prescribing rate for FPMRS in ***(New York?), ***(Connecticut?), and ***(Rhode Island?) is zero, or effectively zero.  FPMRS in Minnesota, Utah, and Maine have the highest median prescribing rates, which are above ***%.  The top 5% of opioid prescribers were located in *** (states).   

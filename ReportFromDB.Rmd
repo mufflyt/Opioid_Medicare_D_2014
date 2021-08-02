@@ -35,7 +35,7 @@ library(tidyverse)
 #setwd(current_working_dir)
 batch <- as.integer(Sys.time())
 #
-db <- 'Data/tyler.db'
+db <- '/Volumes/Video Projects Muffly 1/Opioids/tyler.db'  
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_tb <- tbl(con, "PUF")
 SF_tb <- tbl(con, "SummaryFiles")
@@ -82,8 +82,6 @@ opioidRX <- SF_tb %>%
       val = "0"
     )
   ) %>% ungroup() 
-
-
 ```
 
 
@@ -102,13 +100,11 @@ fpmrs_GE10 <- opioidRX %>% group_by(NPI) %>%
   summarise(OpioidClaimCount = round(mean(OpioidClaimCount),0)) %>% ungroup() %>% filter(OpioidClaimCount >= 10) %>%
   select(NPI) %>% unique() %>% ungroup() %>% 
   unlist(use.names = FALSE)
-
 ```
 
 A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.  
 
 ```{r query_1}
-
 opioids <- OPIOIDS_tb %>% select(drug_name) %>% collect() %>% 
   unlist(use.names = FALSE)
 
@@ -127,7 +123,6 @@ stats_claims <- claims %>% filter(drug_name %in% opioids) %>%
     mean_supply = mean(total_day_supply /
                          total_30_day_fill_count, na.rm = TRUE)
   )
-
 ```
 
 Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of `r format(total_count$total_claim_count, digits = 0, big.mark = ",")` opioid claims were prescribed to `r format(total_count$total_bene_count, digits = 0, big.mark = ",")` beneficiaries (Table 1).  Each FPMRS prescribed to a mean (SD) of `r round(stats_claims$mean_claim, 1)` (`r round(stats_claims$sd_claim, 1)`) opioid claims to a mean of `r round(stats_claims$mean_bene, 1)` (`r round(stats_claims$sd_bene, 1)`) beneficiaries.  
@@ -135,7 +130,6 @@ Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, 
 Each beneficiary received a mean of `r round(stats_claims$mean_claim/stats_claims$mean_bene,1)` opioid claims, with a supply lasting a mean of `r round(stats_claims$mean_supply, 1)` days.  
 
 ```{r drug_stats, message=FALSE, warning=FALSE}
-
 stats_opioids <- claims %>% filter(drug_name %in% opioids) %>% group_by(drug_name) %>% 
   summarise(claim_count = sum(total_claim_count), .groups = "drop") %>% 
   mutate(claim_percentage = round(100 * claim_count / sum(claim_count), 1)) %>%
@@ -147,7 +141,6 @@ Combination hydrocodone-acetaminophen accounted for `r sum(stats_opioids[1, 2])`
 
 
 ```{r region_count, message=FALSE, warning=FALSE}
-
 # opioid prescribing rate = OPR
 state_OpioidPR <- claims %>%
   mutate(total_opioid_count = ifelse(drug_name %in% opioids,

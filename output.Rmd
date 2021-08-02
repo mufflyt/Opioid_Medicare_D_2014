@@ -95,9 +95,6 @@ opioidRX <-  MPDOPS %>%
                  `Extended-Release Opioid Prescribing Rate`), 
             funs(parse_number)) %>%
   ungroup() 
-
-
-
 ```
 
 ```{r load_db }
@@ -105,11 +102,13 @@ opioidRX <-  MPDOPS %>%
 library(DBI)
 library(tidyverse)
 #
-current_working_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+current_working_dir <- getwd()
+
+#current_working_dir <- dirname(rstudioapi::getActiveDocumentContext()$path) #errors out with knitr
 setwd(current_working_dir)
 batch <- as.integer(Sys.time())
 #
-db <- 'Data/PUF/PUF.db'
+db <- '/Volumes/Video Projects Muffly 1/Opioids/PUF.db'
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_13 <- tbl(con, "PUF_13")
 PUF_14 <- tbl(con, "PUF_14")
@@ -181,13 +180,11 @@ Combination hydrocodone and acetaminophen accounted for 1,478 opioid claims (46.
 
 ```{r region_count}
 
-
 city_count <- claims %>% group_by(nppes_provider_city) %>% 
   summarise(total = mean(total_claim_count)) %>% arrange(total)
 
 state_count <- claims %>% group_by(nppes_provider_state) %>% 
   summarise(total = mean(total_claim_count)) %>% arrange(total)
-
 
 ```
 The median opioid prescribing rate for FPMRS in ***(New York?), ***(Connecticut?), and ***(Rhode Island?) is zero, or effectively zero.  FPMRS in Minnesota, Utah, and Maine have the highest median prescribing rates, which are above ***%.  The top 5% of opioid prescribers were located in *** (states).   

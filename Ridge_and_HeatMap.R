@@ -19,30 +19,33 @@ library(ggridges)
 library(tidyverse)
 
 # Steps to produce Medicare_Part_D_Opioid_Prescriber_Summary_File_2017
-`Medicare_Part_D_Opioid_Prescriber_Summary_File_2017` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2017.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+`Medicare_Part_D_Opioid_Prescriber_Summary_File_2017` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2017.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert(.) %>% 
   rename(`Extended-Release Opioid Prescribing Rate` = `Long-Acting Opioid Prescribing Rate`) %>%
   rename(`Extended-Release Opioid Claims` = `Long-Acting Opioid Claim Count`) %>%
   exploratory::clean_data_frame(.)
 
 # Steps to produce Medicare_Part_D_Opioid_Prescriber_Summary_File_2016
-`Medicare_Part_D_Opioid_Prescriber_Summary_File_2016` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2016.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+`Medicare_Part_D_Opioid_Prescriber_Summary_File_2016` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2016.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert(.) %>%
   exploratory::clean_data_frame(.)
 
 # Steps to produce Medicare_Part_D_Opioid_Prescriber_Summary_File_2015
-`Medicare_Part_D_Opioid_Prescriber_Summary_File_2015` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2015.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+`Medicare_Part_D_Opioid_Prescriber_Summary_File_2015` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2015.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert(.) %>%
   exploratory::clean_data_frame(.)
-`Medicare_Part_D_Opioid_Prescriber_Summary_File_2015` <- as.numeric(Medicare_Part_D_Opioid_Prescriber_Summary_File_2015$`NPPES Provider ZIP Code`)
+Medicare_Part_D_Opioid_Prescriber_Summary_File_2015$`NPPES Provider ZIP Code` <- as.numeric(Medicare_Part_D_Opioid_Prescriber_Summary_File_2015$`NPPES Provider ZIP Code`)
+
+colnames(Medicare_Part_D_Opioid_Prescriber_Summary_File_2015)
+
 
 # Steps to produce Medicare_Part_D_Opioid_Prescriber_Summary_File_2014
-`Medicare_Part_D_Opioid_Prescriber_Summary_File_2014` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2014.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+`Medicare_Part_D_Opioid_Prescriber_Summary_File_2014` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2014.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert(.) %>%
   exploratory::clean_data_frame(.)
 
 # Steps to produce Medicare_Part_D_Opioid_Prescriber_Summary_File_2013
-`Medicare_Part_D_Opioid_Prescriber_Summary_File_2013` <- exploratory::read_delim_file("data/Medicare Part D Opioid Prescriber Summary Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2013.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+`Medicare_Part_D_Opioid_Prescriber_Summary_File_2013` <- exploratory::read_delim_file("Data/MPDOPS Files/Medicare_Part_D_Opioid_Prescriber_Summary_File_2013.csv" , ",", quote = "\"", skip = 0 , col_names = TRUE , na = c('','NA') , locale = readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/New_York", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert(.) %>%
   exploratory::clean_data_frame(.)
 
@@ -189,6 +192,8 @@ opioidRX <- opioidRX %>%
   mutate(RXnumberBySpecialty = sum(`Opioid Claim Count`, na.rm = TRUE)) %>% 
   mutate(RXPercentBySpecialty = RXnumberBySpecialty/totalRX, na.rm = TRUE)
 
+opioidRX %>% distinct(Specialty)
+
 names(opioidRX)[19] <- "StateODRate"
 # colnames(opioidRX)
 # View(opioidRX)
@@ -196,9 +201,13 @@ names(opioidRX)[19] <- "StateODRate"
 opioidRX$Specialty <- as.factor(opioidRX$Specialty)
 opioidRX$State <- as.factor(opioidRX$State)
 
-TidyOpioidRX <- opioidRX %>% group_by(State, Specialty) %>% summarise(Rate, SpecialtyMedian = median(RXRate), .groups = 'drop') %>%
-  distinct(State, Specialty, SpecialtyMedian, Rate) %>%
-  complete(Specialty, State, fill = list(SpecialtyMedian = 0, Rate = 0)) 
+# TidyOpioidRX <- opioidRX %>% group_by(State, Specialty) %>% summarise(Rate, SpecialtyMedian = median(RXRate), .groups = 'drop') %>%
+#   distinct(State, Specialty, SpecialtyMedian, Rate) %>%
+#   complete(Specialty, State, fill = list(SpecialtyMedian = 0, Rate = 0)) 
+
+TidyOpioidRX <- opioidRX %>% group_by(Specialty) %>% summarise(Rate, SpecialtyMedian = median(RXRate), .groups = 'drop') %>%
+  distinct(Specialty, SpecialtyMedian, Rate) %>%
+  complete(Specialty, fill = list(SpecialtyMedian = 0, Rate = 0)) 
 
 TidyOpioidRX <- TidyOpioidRX %>% group_by(State) %>% mutate(Rate = max(Rate)) %>% filter(State %nin% c('PR', 'DC'))
 

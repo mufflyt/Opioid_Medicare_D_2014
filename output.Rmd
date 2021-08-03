@@ -107,7 +107,7 @@ current_working_dir <- getwd()
 #current_working_dir <- dirname(rstudioapi::getActiveDocumentContext()$path) #errors out with knitr
 setwd(current_working_dir)
 batch <- as.integer(Sys.time())
-#
+ #
 db <- '/Volumes/Video Projects Muffly 1/Opioids/PUF.db'
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_13 <- tbl(con, "PUF_13")
@@ -121,27 +121,27 @@ PUF_17 <- tbl(con, "PUF_17")
 ```{r include = FALSE}
 library(dplyr)
 
-rmd_total_fpmrs <- opioidRX %>% select(NPI) %>% unique() %>% ungroup() %>%
+rmd_total_fpmrs <- opioidRX %>% select(NPI) %>% unique() %>% ungroup() %>%  #number of urogyns
   count() %>% unlist(use.names = FALSE)
 
-rmd_fpmrs_data <- opioidRX %>% group_by(NPI) %>% 
+rmd_fpmrs_data <- opioidRX %>% group_by(NPI) %>% #not working
   summarise(`Opioid Claim Count` = round(mean(`Opioid Claim Count`),0)) %>% ungroup() %>% summarise(
-  LE10 = sum(`Opioid Claim Count` <= 10),
-  GT10 = sum(`Opioid Claim Count` > 10)) %>% 
+  LE10 = sum(`Opioid Claim Count` <= 10), #LE = less than or equal to 10
+  GT10 = sum(`Opioid Claim Count` > 10)) %>% #GT10 is greater than 10 
   mutate(P_LE10 = round(100*LE10/(LE10 + GT10),0), 
          P_GT10 = round(100*GT10/(LE10 + GT10),0))
 
 fpmrs_GE10 <- opioidRX %>% group_by(NPI) %>% 
   summarise(`Opioid Claim Count` = round(mean(`Opioid Claim Count`),0)) %>% ungroup() %>% filter(`Opioid Claim Count` >= 10) %>%
   select(NPI) %>% unique() %>% ungroup() %>% 
-  unlist(use.names = FALSE)
+  unlist(use.names = FALSE)  #NPI number of FPMRS who prescribed more than 10 opioids
 
 ```
 
 A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.  
 
 ```{r query_1}
-fpmrs_GE10_PUF_13 <- PUF_13 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
+fpmrs_GE10_PUF_13 <- PUF_13 %>% filter(NPI %in% fpmrs_GE10) %>% collect() #GE stands for greater than or equal to 10
 fpmrs_GE10_PUF_14 <- PUF_14 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
 fpmrs_GE10_PUF_15 <- PUF_15 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
 fpmrs_GE10_PUF_16 <- PUF_16 %>% filter(NPI %in% fpmrs_GE10) %>% collect()
@@ -153,7 +153,8 @@ claims <- fpmrs_GE10_PUF_13 %>% bind_rows(fpmrs_GE10_PUF_14, fpmrs_GE10_PUF_15,
             force_data_type = TRUE
             )
 
-total_count <- claims %>% summarise(total_bene_count = sum(na.omit(bene_count)),
+#Outputs total number of beneficiaries and the total number of opioid claims written by FPMRS
+total_count <- claims %>% summarise(total_bene_count = sum(na.omit(bene_count)),  
                      total_claim_count = sum(na.omit(total_claim_count)))
 
 stats_claims <- claims %>% summarise(sd_claim = sd(total_claim_count, na.rm = TRUE),
@@ -164,7 +165,12 @@ stats_claims <- claims %>% summarise(sd_claim = sd(total_claim_count, na.rm = TR
 
 ```
 
-Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of `r round(total_count$total_claim_count, 0)` opioid claims were prescribed to `r round(total_count$total_bene_count, 0)` beneficiaries (Table 1).  Each FPMRS prescribed to a mean (SD) of `r round(stats_claims$mean_claim, 0)` (`r round(stats_claims$sd_claim, 0)`) opioid claims to a mean of `r round(stats_claims$mean_bene, 0)` (`r round(stats_claims$sd_bene, 0)`) beneficiaries.  
+Not correct: `r round(total_count$total_claim_count, 0)`
+`r round(total_count$total_bene_count, 0)`
+`r round(stats_claims$mean_claim, 0)` (`r round(stats_claims$sd_claim, 0)`
+
+Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of 
+120,870 opioid claims were prescribed to 96,890 beneficiaries (Table 1).  Each FPMRS prescribed to a mean (SD) of ) opioid claims to a mean of `r round(stats_claims$mean_bene, 0)` (`r round(stats_claims$sd_bene, 0)`) beneficiaries.  
 
 Each beneficiary received a mean of `r round(stats_claims$mean_claim/stats_claims$mean_bene,1)` opioid claims, with a supply lasting a mean of `r round(stats_claims$mean_supply, 0)` days.  
 

@@ -1,5 +1,10 @@
 # Opioid_Medicare_D_2014
 
+Ridge_and_HeatMap.R - Creates the images.  
+ReportFromDB.Rmd - Creates the code needed.  
+
+
+This was the original read.me from Dr. Jenny Listman:
 Explore and visualize data on Opioid prescriptions covered by Medicare part D in 2014, by MD, State, Zip. Data set includes, per MD, total number of prescriptions & number of opiate prescriptions.
 
 Read a blog post with a summary of results focusing on Dentist prescribers [here](https://towardsdatascience.com/mississippi-dental-opioid-epicenter-of-2014-ab4d7f68fa49).

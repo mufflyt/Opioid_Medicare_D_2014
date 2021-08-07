@@ -3,16 +3,15 @@ title: "R Notebook"
 output:
   html_document:
     df_print: paged
-editor_options: 
-  chunk_output_type: console
 ---
 
 ```{r, setup, include=FALSE}
 knitr::opts_chunk$set(fig.width = 8, collapse = TRUE, include = FALSE)
+`%nin%` <- Negate(`%in%`)
 ```
 
-```{r libs, echo=FALSE}
-library(dplyr)
+```{r libs, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
+
 library(janitor)
 library(lubridate)
 library(hms)
@@ -21,14 +20,18 @@ library(stringr)
 library(readr)
 library(forcats)
 library(RcppRoll)
-library(dplyr)
 library(tibble)
 library(bit64)
 library(exploratory)
 library(ggplot2)
 library(ggridges)
-library(DBI)
 library(tidyverse)
+library(DBI)
+library(dplyr)
+library(dbplyr)
+library(Hmisc)
+library(knitr)
+library(rmarkdown)
 ```
 
 ```{r load_db}
@@ -36,8 +39,7 @@ library(tidyverse)
 #current_working_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 #setwd(current_working_dir)
 batch <- as.integer(Sys.time())
-#
-db <- '/Volumes/Video Projects Muffly 1/Opioids/tyler.db'  
+db <-'/home/dfcoelho/Downloads/tyler.db'
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_tb <- tbl(con, "PUF")
 SF_tb <- tbl(con, "SummaryFiles")
@@ -51,7 +53,7 @@ OPIOIDS_tb <- tbl(con, "OPIOIDS")
 ```
 
 
-```{r merge_data}
+```{r merge_data, message=FALSE, warning=FALSE}
 FPMRS <- FPMRS_tb %>% collect()
 
 excluded_states <- c("AA", "AE", "AP", "AS", "GU", "MP", "VI", "ZZ", "XX")
@@ -61,35 +63,23 @@ FPMRS_NPIs <- unlist(FPMRS$NPI)
 opioidRX <- SF_tb %>% 
   filter(NPI %in% FPMRS_NPIs) %>% collect() %>%
   filter(State %nin% excluded_states) %>% 
-  mutate_at(vars(OpioidPrescribingRate, `ExtendedReleaseOpioidClaims`,
-                 `ExtendedReleaseOpioidPrescribingRate`), 
-            funs(parse_number)) %>% 
+  mutate_at(vars(OpioidPrescribingRate), parse_number) %>% 
   mutate_at(vars(Year, NPI, `NPPESProviderLastName`, `NPPESProviderFirstName`, 
-                 `Zip`, State, Specialty), funs(factor)) %>%
+                 `Zip`, State, Specialty), factor) %>%
   mutate(OpioidClaimCount = as.numeric(OpioidClaimCount)) %>%
   mutate(TotalClaimCount = as.numeric(TotalClaimCount)) %>%
   mutate(RXRate = OpioidClaimCount/TotalClaimCount) %>%
   filter(!is.na(RXRate)) %>% group_by(NPI) %>% mutate(Specialty = "FPMRS") %>%
   group_by(NPI) %>% 
-  mutate(
-    MedianBySpecialty = median(RXRate, na.rm = TRUE),
-    `ExtendedReleaseOpioidClaims` = impute_na(
-      `ExtendedReleaseOpioidClaims`,
-      type = "value",
-      val = "0"
-    ),
-    `ExtendedReleaseOpioidPrescribingRate` = impute_na(
-      `ExtendedReleaseOpioidPrescribingRate`,
-      type = "value",
-      val = "0"
-    )
-  ) %>% ungroup() 
+  ungroup() 
+
+
 ```
 
 
-```{r include = FALSE}
+```{r fpmrs_data, include = FALSE}
 rmd_total_fpmrs <- opioidRX %>% select(NPI) %>% unique() %>% ungroup() %>%
-  count() %>% unlist(use.names = FALSE)
+  nrow()
 
 rmd_fpmrs_data <- opioidRX %>% group_by(NPI) %>% 
   summarise(OpioidClaimCount = round(mean(OpioidClaimCount),0)) %>% ungroup() %>% summarise(
@@ -99,18 +89,24 @@ rmd_fpmrs_data <- opioidRX %>% group_by(NPI) %>%
          P_GT10 = round(100*GT10/(LE10 + GT10),0))
 
 fpmrs_GE10 <- opioidRX %>% group_by(NPI) %>% 
-  summarise(OpioidClaimCount = round(mean(OpioidClaimCount),0)) %>% ungroup() %>% filter(OpioidClaimCount >= 10) %>%
-  select(NPI) %>% unique() %>% ungroup() %>% 
-  unlist(use.names = FALSE)
+  summarise(OpioidClaimCount = round(mean(OpioidClaimCount), 0)) %>% 
+  ungroup() %>% filter(OpioidClaimCount >= 10) %>% distinct(NPI) %>% 
+  select(NPI) %>% unlist(use.names = FALSE) %>% as.character()
+
 ```
 
 A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.  
 
 ```{r query_1}
+
 opioids <- OPIOIDS_tb %>% select(drug_name) %>% collect() %>% 
   unlist(use.names = FALSE)
 
-claims <- PUF_tb %>% filter(npi %in% fpmrs_GE10) %>% collect()
+c <- FPMRS_tb %>% select(NPI) %>% collect()
+# Here we filter the entries to include only those that both claims and beneficiaries are not NAs
+claims <- PUF_tb %>% 
+  filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
+  filter(NPI %in% !!unlist(c)) %>% collect()
 
 total_count <- claims %>% filter(drug_name %in% opioids) %>% 
   summarise(total_bene_count = sum(na.omit(bene_count)),
@@ -125,6 +121,7 @@ stats_claims <- claims %>% filter(drug_name %in% opioids) %>%
     mean_supply = mean(total_day_supply /
                          total_30_day_fill_count, na.rm = TRUE)
   )
+
 ```
 
 Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, a total of `r format(total_count$total_claim_count, digits = 0, big.mark = ",")` opioid claims were prescribed to `r format(total_count$total_bene_count, digits = 0, big.mark = ",")` beneficiaries (Table 1).  Each FPMRS prescribed to a mean (SD) of `r round(stats_claims$mean_claim, 1)` (`r round(stats_claims$sd_claim, 1)`) opioid claims to a mean of `r round(stats_claims$mean_bene, 1)` (`r round(stats_claims$sd_bene, 1)`) beneficiaries.  
@@ -132,6 +129,7 @@ Among FPMRS prescribing at least 10 opioid claims in the Part D Prescriber PUF, 
 Each beneficiary received a mean of `r round(stats_claims$mean_claim/stats_claims$mean_bene,1)` opioid claims, with a supply lasting a mean of `r round(stats_claims$mean_supply, 1)` days.  
 
 ```{r drug_stats, message=FALSE, warning=FALSE}
+
 stats_opioids <- claims %>% filter(drug_name %in% opioids) %>% group_by(drug_name) %>% 
   summarise(claim_count = sum(total_claim_count), .groups = "drop") %>% 
   mutate(claim_percentage = round(100 * claim_count / sum(claim_count), 1)) %>%
@@ -139,17 +137,17 @@ stats_opioids <- claims %>% filter(drug_name %in% opioids) %>% group_by(drug_nam
 
 ```
 
-Combination hydrocodone-acetaminophen accounted for `r format(sum(stats_opioids[1, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(stats_opioids[1, 3] %>% unlist(use.names = FALSE), digits = 1, big.mark = ",")` %), oxycodone acetaminophen `r format(sum(stats_opioids[2, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(sum(stats_opioids[2, 3]), digits = 0, big.mark = ",")`%), followed by tramadol hydrochloride `r format(sum(stats_opioids[3, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(sum(stats_opioids[3, 3]), digits = 0, big.mark = ",")` %), and lastly oxycodone `r format(sum(stats_opioids[4, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(sum(stats_opioids[4, 3]), digits = 0, big.mark = ",")`%).
+Combination hydrocodone-acetaminophen accounted for `r format(sum(stats_opioids[1, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(stats_opioids[1, 3] %>% unlist(use.names = FALSE), digits = 0, big.mark = ",")` %), oxycodone acetaminophen `r format(sum(stats_opioids[2, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(sum(stats_opioids[2, 3]), digits = 0, big.mark = ",")`%), followed by tramadol hydrochloride `r format(sum(stats_opioids[3, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(sum(stats_opioids[3, 3]), digits = 0, big.mark = ",")` %), and lastly oxycodone `r format(sum(stats_opioids[4, 2]), digits = 0, big.mark = ",")` opioid claims (`r format(sum(stats_opioids[4, 3]), digits = 0, big.mark = ",")`%).
 
 
 ```{r region_count, message=FALSE, warning=FALSE}
+
 # opioid prescribing rate = OPR
-#OF all the drugs FPMRS prescribe how many of them were opioids?
-state_OpioidPR <- claims %>%  #Claims are urogynecologists
+state_OpioidPR <- claims %>%
   mutate(total_opioid_count = ifelse(drug_name %in% opioids,
                                      total_claim_count, 0)) %>%
   group_by(NPI, nppes_provider_state) %>%
-  summarise(opioidPR = 100 * sum(total_opioid_count) / sum(total_claim_count)) %>%  #total opioids / all prescriptions for anything
+  summarise(opioidPR = 100 * sum(total_opioid_count) / sum(total_claim_count)) %>%
   group_by(nppes_provider_state) %>% summarise(opioidPR = mean(opioidPR)) 
 
 top_prescribers <- claims %>% filter(drug_name %in% opioids) %>% 
@@ -157,28 +155,25 @@ top_prescribers <- claims %>% filter(drug_name %in% opioids) %>%
   summarise(total_claims = sum(total_claim_count), .groups = "drop") %>% 
   arrange(desc(total_claims))
 
-#These fpmrs prescribed the most opioids to beneficiaries
 top_5_states <- top_prescribers %>% head(nrow(.)*0.05) %>% 
   select(nppes_provider_state) %>% distinct() %>% unlist(use.names = FALSE)
 
-
-#Top opioid prescribing rates are based on FPMRS prescribing patterns in those states.  Opioids were prescribed by FPMRS.  
 top_opr <- state_OpioidPR %>% arrange(desc(opioidPR)) %>%
   select(nppes_provider_state) %>% head(3) %>% unlist(use.names = FALSE)
-
 bottom_opr <- state_OpioidPR %>% filter(opioidPR < 1) %>% 
   select(nppes_provider_state) %>% unlist(use.names = FALSE)
 ```
 
-The median opioid prescribing rate for FPMRS in `r paste0(paste0(bottom_opr[1:3], collapse = ", "), " and ", bottom_opr[4])` is zero, or effectively zero.  FPMRS in `r paste0(paste0(top_opr[1:2], collapse = ", "), " and ", top_opr[3])` have the highest median prescribing opioid prescribing rates, which are above `r round(state_OpioidPR %>% arrange(desc(opioidPR)) %>% select(opioidPR) %>% unlist(use.names = FALSE) %>% .[3], 1)`%.  The top 5% of opioid prescribers were located in `r paste0(paste0(top_5_states[1:17], collapse = ", "), " and ", top_5_states[18])`.   
-
-When broken down by geographical region, FPMRS in ***(region) prescribed higher numbers of opioid claims per 1000 Medicare beneficiaries, compared with FPMRS in the rest of the United States. Aggregated by region, FPMRS in the ***(region) prescribed *** opioid claims per 1000 Medicare beneficiaries, compared with *** in the (region), *** in the (region), and *** in the (region). 
+The median opioid prescribing rate for FPMRS in `r paste0(paste0(bottom_opr[1:3], collapse = ", "), " and ", bottom_opr[4])` is zero, or effectively zero.  FPMRS in `r paste0(paste0(top_opr[1:2], collapse = ", "), " and ", top_opr[3])` have the highest median prescribing rates, which are above `r round(state_OpioidPR %>% arrange(desc(opioidPR)) %>% select(opioidPR) %>% unlist(use.names = FALSE) %>% .[3], 1)`%.  The top 5% of opioid prescribers were located in `r paste0(paste0(top_5_states[1:17], collapse = ", "), " and ", top_5_states[18])`.   
 
 The median opioid prescription rate for prescriptions covered by Medicare Part D across FPMRS was `r opioidRX %>% summarise(median_OPR=median(OpioidPrescribingRate)) %>% unlist(use.names = FALSE) %>% round(1)`% from 2013 to 2017. 
 
+A 95% interval for the MEDIAN opioid prescription rate for prescriptions covered by Medicare Part D across FPMRS from 2013 to 2017 was `r opioidRX %>% select(OpioidPrescribingRate) %>% smedian.hilow(.,conf.int=.95) %>% round(., 2)` (Median, Lower, Upper).
+
+A 95% interval for the MEAN opioid prescription rate for prescriptions covered by Medicare Part D across FPMRS from 2013 to 2017 was `r opioidRX %>% select(OpioidPrescribingRate) %>% smean.cl.boot(.,conf.int=.95) %>% round(., 2)` (Mean, Lower, Upper).
 
 Table:
-```{r table}
+```{r table, warning=FALSE, message=FALSE}
 
 claims_10pp <- claims %>% 
   filter(drug_name %in% opioids, total_claim_count > 10) %>% 
@@ -187,11 +182,10 @@ claims_10pp <- claims %>%
   quantile(na.omit(bene_count)) %>% .[c(2, 4)] %>% paste0(collapse = ', '),
   ")"))
 
-top_5_prescribers <- top_prescribers %>% head(nrow(.)*0.05) %>% select(NPI) %>% 
+top_5_prescribers <- top_prescribers %>% head(nrow(.)*0.05) %>% select(NPI) %>%
   unlist(use.names = FALSE)
-#Top 5% of opioid prescribers as a function of all the prescriptions they wrote
 
-claims_5pp <- claims %>%  #Median number of beneficiares receiving opioids prescribed by the top 5% of fprms prescribers
+claims_5pp <- claims %>% 
   filter(drug_name %in% opioids, NPI %in% top_5_prescribers) %>% 
   summarise(n = n(), `Median (Q1, Q3)` = paste0(median(bene_count, 
                                                        na.rm = TRUE), "(", 
@@ -201,16 +195,16 @@ claims_5pp <- claims %>%  #Median number of beneficiares receiving opioids presc
                                          ")" ), n = n())
 
 ################################################################################
-table_drugs <- stats_opioids[1:5, ] %>% group_by(drug_name) %>% 
-  arrange(claim_count) %>%
-  summarise(claim_count = paste0(sum(claim_count), 
-                                 " (", sum(claim_percentage), "%)")) %>% 
-  full_join(stats_opioids[-c(1:5), ] %>%
-              summarise(drug_name = "others",
-                        claim_count = paste0(sum(claim_count), " (",
-                                             sum(claim_percentage), "%)")))
+table_drugs <- stats_opioids[1:7, ] %>% group_by(drug_name, claim_count) %>% 
+  summarise(claim_percentage = paste0(sum(claim_count),  
+                                      " (", sum(claim_percentage), "%)")) %>% 
+  full_join(stats_opioids[-c(1:7), ] %>%
+              summarise(drug_name = "others", claim_count, 
+                        claim_percentage = paste0(sum(claim_count), " (",
+                                             sum(claim_percentage), "%)")) %>% 
+              head(1))
 #
-table_drugs <- table_drugs %>% .[c(2,3,5,4, 1,6),]
+table_drugs <- table_drugs %>% arrange(desc(claim_count))
 
 ################################################################################
 table_drugs_B_Partial <- claims %>% 
@@ -220,18 +214,29 @@ table_drugs_B_Partial <- claims %>%
   mutate(claim_percentage = round(100 * claim_count / sum(claim_count), 1)) %>%
   arrange(desc(claim_count)) 
 #
-table_drugs_B <- table_drugs_B_Partial %>% .[1:5, ] %>% 
-  group_by(drug_name) %>% summarise(
-    claim_count = paste0(
-      sum(claim_count), " (", sum(claim_percentage), "%)")
-    ) %>% full_join(table_drugs_B_Partial[-c(1:5), ] %>% 
+################################################################################
+table_joined <- stats_opioids %>% 
+  left_join(table_drugs_B_Partial %>% 
+              rename(claim_count_top5=claim_count) %>%
+              rename(claim_percentage_top5=claim_percentage)
+              , by="drug_name") %>% 
+  arrange(desc(claim_count))
+
+table_joined_others <- table_joined %>% .[-c(1:6), ] %>% 
                       summarise(
-                        drug_name = "others", 
-                        claim_count = paste0(sum(claim_count), 
-                                             " (", sum(claim_percentage), 
-                                             "%)"))) 
-#
-table_drugs_B <- table_drugs_B %>% .[c(2,3,5,1,6,4),]
+                        drug_name = "Others", 
+                        claim_count = sum(claim_count),
+                        claim_count_top5 = sum(claim_count_top5, na.rm = TRUE),
+                        claim_percentage = 0,
+                        claim_percentage_top5 = 0)
+
+table_1 <- table_joined  %>% .[c(1:6), ] %>% rbind(table_joined_others) %>%
+  summarise(drug_name,
+    claim_percentage=paste0(claim_count, 
+      " (", round(100*claim_count/sum(claim_count), 2), "%)"),
+    claim_percentage_top5=paste0(claim_count_top5,
+      " (", round(100*claim_count_top5/sum(claim_count_top5), 2), "%)")
+    ) 
 
 ################################################################################
 table_total_30_day_fill_count <- claims %>% 
@@ -287,18 +292,23 @@ table_total_day_supply_5pp <- claims %>%
 
 ```
 
-bene_count
-`r as.data.frame(cbind(t(claims_10pp), t(claims_5pp)))`
+The total amount of beneficiaries that received prescriptions from FPMRS (only those with 10+ prescriptions were considered) and from the TOP5% prescribers are:
 
-drug_name
+`r tbl_bene <- as.data.frame(cbind(t(claims_10pp), t(claims_5pp))); names(tbl_bene) <- c("Total_Beneficiaries", "Total_Beneficiaries_top5"); tbl_bene`
 
-`r table_drugs %>% left_join(table_drugs_B, by="drug_name")`
+There are `r length(top_5_prescribers)` FPMRS that are considered the top 5% prescribers. Also, `r `claims %>% filter(drug_name %in% opioids, total_claim_count > 10) %>% distinct(NPI) %>% nrow()` FPMRS prescribed more than 10 opioids claims.
 
-total_30_day_fill_count
+The top 6 most prescribed drugs are:
 
+`r table_1`
+
+total_30_day_fill_count  - Median number of Opioid Claims prescribed.
+Only prescribers with `total_claim_count > 10` were considered.
 `r table_total_30_day_fill_count`
 
-total_30_day_fill_count_5pp
+total_30_day_fill_count_5pp - Median number of 30 day fill count Opioid Claims prescribed by the top 5 prescribers.
+
+Only prescribers with `total_claim_count > 10` were considered.
 
 `r table_total_30_day_fill_count_5pp`
 
@@ -306,21 +316,25 @@ total_claim_count
 
 `r table_total_claim_count`
 
-total_claim_count_5pp
+
+There are only 69 rows in which `total_30_day_fill_count != total_claim_count`, so total_claim_count_5pp will be virtually equal to table_total_30_day_fill_count_5pp.
+
+total_claim_count_5pp - Median number of Opioid Claims prescribed by the top 5 prescribers.
 
 `r table_total_claim_count_5pp`
 
-total_day_supply
+total_day_supply - Median value of the total amount of days for which a drug was dispensed.
 
 `r table_total_day_supply`
 
-total_day_supply_5pp
+total_day_supply_5pp - Median value of the total amount of days for which a drug was dispensed by the top 5 prescribers.
 
 `r table_total_day_supply_5pp`
 
 ```{r test_block}
 
 fpmrs_prescription = PUF_tb %>%
+  filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
   filter(NPI %in% FPMRS_NPIs) %>%
   mutate(total_opioid_count = ifelse(drug_name %in% opioids,
                                      total_claim_count, 0)) %>%
@@ -332,11 +346,12 @@ fpmrs_prescription = PUF_tb %>%
 
 ```
 
-The median opioid prescription rate across FPMRS, whose prescriptions were covered by Medicare Part D, from 2013 to 2017 was `r round(100*fpmrs_prescription$total_opioid/fpmrs_prescription$total,1)`%. #refers to the ratio between total opioids prescribed by FPMRS and the toal opioids prescribed by any specialties.  
+The opioid prescription rate across FPMRS, whose prescriptions were covered by Medicare Part D, from 2013 to 2017 was `r round(100*fpmrs_prescription$total_opioid/fpmrs_prescription$total,1)`%. 
 
 ```{r total_opioid_pr}
 
 total_opioid_prescription = PUF_tb %>%
+  filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
   mutate(total_opioid_count = ifelse(drug_name %in% opioids,
                                      total_claim_count, 0)) %>%
   summarise(
@@ -346,5 +361,16 @@ total_opioid_prescription = PUF_tb %>%
 
 ```
 
-These FPMRS providers prescribed a total of 121,057 opioid prescriptions or `r round(100*(fpmrs_prescription$total_opioid/total_opioid_prescription$total_opioid), 3)`% of all opioid prescriptions covered by Medicare Part D from 2013 to 2017. 
+These FPMRS providers prescribed a total of `r format(fpmrs_prescription$total_opioid, digits = 2, big.mark = ",")` opioid prescriptions or `r round(100*(fpmrs_prescription$total_opioid/total_opioid_prescription$total_opioid), 3)`% of all opioid prescriptions covered by Medicare Part D from 2013 to 2017. 
+
+```{r render_ridge, out.width = "100%"}
+source('Ridge_and_HeatMap_DB.R')
+```
+`r include_graphics("OpioidBoxPlot.png") `
+
+`r include_graphics("OpioidHeatMap.png")`
+
+`r include_graphics("DentistOpioidMeanMedianPlot.png") `
+
+`r erin_data %>% paged_table()`
 

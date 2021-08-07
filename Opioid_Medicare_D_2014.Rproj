@@ -13,3 +13,9 @@ RnwWeave: Sweave
 LaTeX: pdfLaTeX
 
 AutoAppendNewline: Yes
+
+QuitChildProcessesOnExit: Yes
+
+PythonType: system
+PythonVersion: 3.8.5
+PythonPath: /bin/python3.8

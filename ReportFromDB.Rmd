@@ -26,17 +26,15 @@ library(exploratory)
 library(ggplot2)
 library(ggridges)
 library(tidyverse)
-<<<<<<< HEAD
 library(digest)
 library(arsenal)
-=======
 library(DBI)
 library(dplyr)
 library(dbplyr)
 library(Hmisc)
 library(knitr)
 library(rmarkdown)
->>>>>>> 6a91e8bfffd7e75cd5608f4482008df00bb4b018
+library(openintro)
 ```
 
 ```{r load_db}
@@ -81,9 +79,9 @@ opioidRX <- SF_tb %>%
 
 
 ```{r fpmrs_data, include = FALSE}
-rmd_total_fpmrs <- opioidRX %>% select(NPI) %>% unique() %>% ungroup() %>%
-  nrow()
-
+rmd_total_fpmrs <- opioidRX %>% select(NPI) %>% unique() %>% 
+  ungroup() %>% nrow()
+rmd_total_fpmrs <- 1
 #NPIs of people who prescribed less than ten opioids to medicare beneficiaries
 LE10_NPIs <- opioidRX %>% group_by(NPI) %>% 
   summarise(OpioidClaimCount = round(mean(OpioidClaimCount),0)) %>% ungroup() %>%
@@ -103,24 +101,29 @@ fpmrs_GE10 <- opioidRX %>% group_by(NPI) %>%
 
 ```
 
-A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.  
+<!-- A total of `r` rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r` rmd_fpmrs_data$LE10` (`r` rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r` rmd_fpmrs_data$GT10` (`r` rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.   -->
 
 ```{r query_1}
 
 opioids <- OPIOIDS_tb %>% select(drug_name) %>% collect() %>% 
   unlist(use.names = FALSE)
 
+opioids_g <- OPIOIDS_tb %>% select(generic_name) %>% collect() %>% 
+  unlist(use.names = FALSE)
+
 c <- FPMRS_tb %>% select(NPI) %>% collect()
 # Here we filter the entries to include only those that both claims and beneficiaries are not NAs
 claims <- PUF_tb %>% 
-  filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
+  #filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
   filter(NPI %in% !!unlist(c)) %>% collect()
 
-total_count <- claims %>% filter(drug_name %in% opioids) %>% 
+total_count <- claims %>% 
+  filter(drug_name %in% opioids | generic_name %in% opioids_g) %>% 
   summarise(total_bene_count = sum(na.omit(bene_count)),
             total_claim_count = sum(na.omit(total_claim_count)))
 
-stats_claims <- claims %>% filter(drug_name %in% opioids) %>%
+stats_claims <- claims %>%
+  filter(drug_name %in% opioids | generic_name %in% opioids_g) %>% 
   summarise(
     sd_claim = sd(total_claim_count, na.rm = TRUE),
     mean_claim = mean(total_claim_count, na.rm = TRUE),
@@ -138,7 +141,9 @@ Each beneficiary received a mean of `r round(stats_claims$mean_claim/stats_claim
 
 ```{r drug_stats, message=FALSE, warning=FALSE}
 
-stats_opioids <- claims %>% filter(drug_name %in% opioids) %>% group_by(drug_name) %>% 
+stats_opioids <- claims %>% 
+  filter(drug_name %in% opioids | generic_name %in% opioids_g) %>% 
+  group_by(drug_name) %>% 
   summarise(claim_count = sum(total_claim_count), .groups = "drop") %>% 
   mutate(claim_percentage = round(100 * claim_count / sum(claim_count), 1)) %>%
   arrange(desc(claim_count))
@@ -149,16 +154,31 @@ Combination hydrocodone-acetaminophen accounted for `r format(sum(stats_opioids[
 
 
 ```{r region_count, message=FALSE, warning=FALSE}
-
+# Here the changes concern me a bit, after removing all entries in which 
+# the beneficiary count or the total claim is NA, the sample size decreased 
+# significantly and the number os states with mean < 1% near half the number
+# of states.
+#
 # opioid prescribing rate = OPR
 state_OpioidPR <- claims %>%
-  mutate(total_opioid_count = ifelse(drug_name %in% opioids,
-                                     total_claim_count, 0)) %>%
+  mutate(total_opioid_count = ifelse(
+    drug_name %in% opioids | generic_name %in% opioids_g, 
+    total_claim_count, 0)) %>%
   group_by(NPI, nppes_provider_state) %>%
-  summarise(opioidPR = 100 * sum(total_opioid_count) / sum(total_claim_count)) %>%
-  group_by(nppes_provider_state) %>% summarise(opioidPR = mean(opioidPR)) 
+  summarise(
+    claimTotal = sum(total_claim_count),
+    opioidTotal = sum(total_opioid_count),
+    opioidPR = 100 * sum(total_opioid_count) / sum(total_claim_count)) %>%
+  group_by(nppes_provider_state) %>% 
+  summarise(
+    opioidMeanPR = mean(opioidPR),
+    opioidPR = median(opioidPR),
+    claimTotal = sum(claimTotal),
+    opioidTotal = sum(opioidTotal)
+    ) 
 
-top_prescribers <- claims %>% filter(drug_name %in% opioids) %>% 
+top_prescribers <- claims %>% 
+  filter(drug_name %in% opioids | generic_name %in% opioids_g) %>% 
   group_by(NPI, nppes_provider_state) %>% 
   summarise(total_claims = sum(total_claim_count), .groups = "drop") %>% 
   arrange(desc(total_claims))
@@ -168,11 +188,12 @@ top_5_states <- top_prescribers %>% head(nrow(.)*0.05) %>%
 
 top_opr <- state_OpioidPR %>% arrange(desc(opioidPR)) %>%
   select(nppes_provider_state) %>% head(3) %>% unlist(use.names = FALSE)
+
 bottom_opr <- state_OpioidPR %>% filter(opioidPR < 1) %>% 
   select(nppes_provider_state) %>% unlist(use.names = FALSE)
 ```
 
-The median opioid prescribing rate for FPMRS in `r paste0(paste0(bottom_opr[1:3], collapse = ", "), " and ", bottom_opr[4])` is zero, or effectively zero.  FPMRS in `r paste0(paste0(top_opr[1:2], collapse = ", "), " and ", top_opr[3])` have the highest median prescribing rates, which are above `r round(state_OpioidPR %>% arrange(desc(opioidPR)) %>% select(opioidPR) %>% unlist(use.names = FALSE) %>% .[3], 1)`%.  The top 5% of opioid prescribers were located in `r paste0(paste0(top_5_states[1:17], collapse = ", "), " and ", top_5_states[18])`.   
+The median opioid prescribing rate for FPMRS in `r paste0(paste0(abbr2state(bottom_opr[1:length(bottom_opr)-1]), collapse = ", "), " and ", abbr2state(bottom_opr[length(bottom_opr)]))` is zero, or effectively zero.  FPMRS in `r paste0(paste0(abbr2state(top_opr[1:2]), collapse = ", "), " and ", abbr2state(top_opr[3]))` have the highest median prescribing rates, which are above `r round(state_OpioidPR %>% arrange(desc(opioidPR)) %>% select(opioidPR) %>% unlist(use.names = FALSE) %>% .[3], 1)`%.  The top 5% of opioid prescribers were located in `r paste0(paste0(abbr2state(top_5_states[1:length(top_5_states)-1]), collapse = ", "), " and ", abbr2state(top_5_states[length(top_5_states)]))`.   
 
 The median opioid prescription rate for prescriptions covered by Medicare Part D across FPMRS was `r opioidRX %>% summarise(median_OPR=median(OpioidPrescribingRate)) %>% unlist(use.names = FALSE) %>% round(1)`% from 2013 to 2017. 
 
@@ -359,7 +380,7 @@ The opioid prescription rate across FPMRS, whose prescriptions were covered by M
 ```{r total_opioid_pr}
 
 total_opioid_prescription = PUF_tb %>%
-  filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
+  #filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
   mutate(total_opioid_count = ifelse(drug_name %in% opioids,
                                      total_claim_count, 0)) %>%
   summarise(
@@ -372,134 +393,149 @@ total_opioid_prescription = PUF_tb %>%
 These FPMRS providers prescribed a total of `r format(fpmrs_prescription$total_opioid, digits = 2, big.mark = ",")` opioid prescriptions or `r round(100*(fpmrs_prescription$total_opioid/total_opioid_prescription$total_opioid), 3)`% of all opioid prescriptions covered by Medicare Part D from 2013 to 2017. 
 
 ```{r render_ridge, out.width = "100%"}
-source('Ridge_and_HeatMap_DB.R')
+#source('Ridge_and_HeatMap_DB_Rev1.R')
+
 ```
+Ridges were not included for states with less than 4 FPMRS listed in the PUF file.
+
+`r include_graphics("FPMRS_OpioidRidgePlot.png") `
+
 `r include_graphics("OpioidBoxPlot.png") `
 
 `r include_graphics("OpioidHeatMap.png")`
 
 `r include_graphics("DentistOpioidMeanMedianPlot.png") `
 
-`r erin_data %>% paged_table()`
+<!-- ` erin_data %>% paged_table()` -->
 
 
-Can we get demographics of physicians who prescribed opioids.  `opioidRX` has the NPI numbers of all FPMRS physicians who prescribed.   
-```{r}
-#Bring in demographics that I created on Rui project
-# demographics <- read_rds("Data/all_a_dataframes_all_merged_distinct_49.rds") 
-# write_rds(demographics, "Data/all_a_dataframes_all_merged_distinct_49.rds")
-# 
-# opioid_prescribers <- opioidRX %>% distinct(NPI) 
-# write_rds(opioid_prescribers, "Data/opioid_prescribers_export_to_exploratory.rds")
+<!-- Can we get demographics of physicians who prescribed opioids.  `opioidRX` has the NPI numbers of all FPMRS physicians who prescribed.    -->
+<!-- ```{r} -->
+<!-- #Bring in demographics that I created on Rui project -->
+<!-- # demographics <- read_rds("Data/all_a_dataframes_all_merged_distinct_49.rds")  -->
+<!-- # write_rds(demographics, "Data/all_a_dataframes_all_merged_distinct_49.rds") -->
+<!-- #  -->
+<!-- # opioid_prescribers <- opioidRX %>% distinct(NPI)  -->
+<!-- # write_rds(opioid_prescribers, "Data/opioid_prescribers_export_to_exploratory.rds") -->
 
-# Steps to produce all_a_dataframes_all_merged_distinct_49
-# `all_a_dataframes_all_merged_distinct_49` <-  exploratory::read_rds_file("/Users/tylermuffly/Dropbox (Personal)/Opioid_Medicare_D_2014/Data/all_a_dataframes_all_merged_distinct_49.rds") %>%
-#   readr::type_convert() %>%
-#   exploratory::clean_data_frame() %>%
-#   distinct(npi, .keep_all = TRUE) %>%
-#   mutate(npi = as.character(npi))
-# 
-# # Steps to produce the output
-#  demographics <- exploratory::read_rds_file("/Users/tylermuffly/Dropbox (Personal)/Opioid_Medicare_D_2014/Data/opioid_prescribers_export_to_exploratory.rds") %>%
-#   readr::type_convert() %>%
-#   exploratory::clean_data_frame() %>%
-#   distinct(NPI, .keep_all = TRUE) %>%
-#   left_join(all_a_dataframes_all_merged_distinct_49, by = c("NPI" = "npi")) %>%
-#   fill(residency_training, suffix, board_certification_year, state, gender, zip_code, .direction = "down") %>%
-#   select(-NPI, -name, -state, -zip_code) %>%
-#   mutate(gender = recode(gender, "F" = "Female", "M" = "Male")) %>%
-#   mutate(suffix = recode(suffix, "DO" = "Osteopathic training", "MD" = "Allopathic training")) %>%
-#   rename(`Residency Training` = residency_training, `Medical School Training` = suffix, `Year of FPMRS Board Certification` = board_certification_year, Gender = gender)
- 
- ##################
- # Steps to produce top_5_prescribers_export_to_exploratory
-top_5_prescribers_export_to_exploratory <- top_5_prescribers %>% as_tibble() %>%
-  mutate(value = as.character(value)) %>%
-  rename(npi = value) %>%
-  mutate(opioid_prescriber_status = "Top five percent")
+<!-- # Steps to produce all_a_dataframes_all_merged_distinct_49 -->
+<!-- # `all_a_dataframes_all_merged_distinct_49` <-  exploratory::read_rds_file("/Users/tylermuffly/Dropbox (Personal)/Opioid_Medicare_D_2014/Data/all_a_dataframes_all_merged_distinct_49.rds") %>% -->
+<!-- #   readr::type_convert() %>% -->
+<!-- #   exploratory::clean_data_frame() %>% -->
+<!-- #   distinct(npi, .keep_all = TRUE) %>% -->
+<!-- #   mutate(npi = as.character(npi)) -->
+<!-- #  -->
+<!-- # # Steps to produce the output -->
+<!-- #  demographics <- exploratory::read_rds_file("/Users/tylermuffly/Dropbox (Personal)/Opioid_Medicare_D_2014/Data/opioid_prescribers_export_to_exploratory.rds") %>% -->
+<!-- #   readr::type_convert() %>% -->
+<!-- #   exploratory::clean_data_frame() %>% -->
+<!-- #   distinct(NPI, .keep_all = TRUE) %>% -->
+<!-- #   left_join(all_a_dataframes_all_merged_distinct_49, by = c("NPI" = "npi")) %>% -->
+<!-- #   fill(residency_training, suffix, board_certification_year, state, gender, zip_code, .direction = "down") %>% -->
+<!-- #   select(-NPI, -name, -state, -zip_code) %>% -->
+<!-- #   mutate(gender = recode(gender, "F" = "Female", "M" = "Male")) %>% -->
+<!-- #   mutate(suffix = recode(suffix, "DO" = "Osteopathic training", "MD" = "Allopathic training")) %>% -->
+<!-- #   rename(`Residency Training` = residency_training, `Medical School Training` = suffix, `Year of FPMRS Board Certification` = board_certification_year, Gender = gender) -->
 
-# Steps to produce all_a_dataframes_all_merged_distinct_49
-`all_a_dataframes_all_merged_distinct_49` <-  exploratory::read_rds_file("/Users/tylermuffly/Dropbox (Personal)/Opioid_Medicare_D_2014/Data/all_a_dataframes_all_merged_distinct_49.rds") %>%
-  readr::type_convert() %>%
-  exploratory::clean_data_frame() %>%
-  distinct(npi, .keep_all = TRUE) %>%
-  mutate(npi = as.character(npi))
+<!--  ################## -->
+<!--  # Steps to produce top_5_prescribers_export_to_exploratory -->
+<!-- top_5_prescribers_export_to_exploratory <- top_5_prescribers %>% as_tibble() %>% -->
+<!--   mutate(value = as.character(value)) %>% -->
+<!--   rename(npi = value) %>% -->
+<!--   mutate(opioid_prescriber_status = "Top five percent") -->
 
-# Steps to produce the output
-demographics_table <-  opioid_prescribers %>%
-  distinct(NPI, .keep_all = TRUE) %>%
-  left_join(all_a_dataframes_all_merged_distinct_49, by = c("NPI" = "npi")) %>%
-  fill(residency_training, suffix, board_certification_year, state, gender, zip_code, .direction = "down") %>%
-  left_join(top_5_prescribers_export_to_exploratory, by = c("NPI" = "NPI")) %>% #Removes those who prescribed fewer than 10 opioids
-  anti_join(LE10_NPIs, by = c("NPI" = "npi")) %>%
-  mutate(opioid_prescriber_status = case_when(is.na(opioid_prescriber_status) ~ "Not in the top fiver percent of opioid prescribers" , TRUE ~ opioid_prescriber_status)) %>%
-  select(-NPI, -name, -state, -zip_code) %>%
-  mutate(gender = recode(gender, "F" = "Female", "M" = "Male")) %>%
-  mutate(suffix = recode(suffix, "DO" = "Osteopathic training", "MD" = "Allopathic training")) %>%
-  rename(`Residency Training` = residency_training, `Medical School Training` = suffix, `Year of FPMRS Board Certification` = board_certification_year, Gender = gender, `Opioid Prescribing Rate` = opioid_prescriber_status)
-```
+<!-- # Steps to produce all_a_dataframes_all_merged_distinct_49 -->
+<!-- `all_a_dataframes_all_merged_distinct_49` <-  exploratory::read_rds_file("/Users/tylermuffly/Dropbox (Personal)/Opioid_Medicare_D_2014/Data/all_a_dataframes_all_merged_distinct_49.rds") %>% -->
+<!--   readr::type_convert() %>% -->
+<!--   exploratory::clean_data_frame() %>% -->
+<!--   distinct(npi, .keep_all = TRUE) %>% -->
+<!--   mutate(npi = as.character(npi)) -->
 
-```{r}
-# Draws a nice table one plot
-tm_arsenal_table = function(df, by){
-  print("Function Sanity Check: Create Arsenal Table using arsenal package")
-  table_variable_within_function <- arsenal::tableby(by ~ .,
-                                                     data=df, control = tableby.control(test = TRUE,
-                                                                                        total = F,
-                                                                                        digits = 1L,
-                                                                                        digits.p = 2L,
-                                                                                        digits.count = 0L,
-                                                                                        numeric.simplify = F,
-                                                                                        numeric.stats =
-                                                                                          c("median",
-                                                                                            "q1q3"),
-                                                                                        cat.stats =
-                                                                                          c("Nmiss",
-                                                                                            "countpct"),
-                                                                                        stats.labels = list(Nmiss = "N Missing",
-                                                                                                            Nmiss2 ="N Missing",
-                                                                                                            meansd = "Mean (SD)",
-                                                                                                            medianrange = "Median (Range)",
-                                                                                                            median ="Median",
-                                                                                                            medianq1q3 = "Median (Q1, Q3)",
-                                                                                                            q1q3 = "Q1, Q3",
-                                                                                                            iqr = "IQR",
-                                                                                                            range = "Range",
-                                                                                                            countpct = "Count (Pct)",
-                                                                                                            Nevents = "Events",
-                                                                                                            medSurv ="Median Survival",
-                                                                                                            medTime = "Median Follow-Up")))
-  final <- summary(table_variable_within_function,
-                   text=T,
-                   title = 'Table: Applicant Descriptive Variables by Matched or Did Not Match from 2015 to 2018',
-                   #labelTranslations = mylabels, #Seen in additional functions file
-                   pfootnote=TRUE)
-  return(final)
-}
-```
+<!-- # Steps to produce the output -->
+<!-- demographics_table <-  opioid_prescribers %>% -->
+<!--   distinct(NPI, .keep_all = TRUE) %>% -->
+<!--   left_join(all_a_dataframes_all_merged_distinct_49, by = c("NPI" = "npi")) %>% -->
+<!--   fill(residency_training, suffix, board_certification_year, state, gender, zip_code, .direction = "down") %>% -->
+<!--   left_join(top_5_prescribers_export_to_exploratory, by = c("NPI" = "NPI")) %>% #Removes those who prescribed fewer than 10 opioids -->
+<!--   anti_join(LE10_NPIs, by = c("NPI" = "npi")) %>% -->
+<!--   mutate(opioid_prescriber_status = case_when(is.na(opioid_prescriber_status) ~ "Not in the top fiver percent of opioid prescribers" , TRUE ~ opioid_prescriber_status)) %>% -->
+<!--   select(-NPI, -name, -state, -zip_code) %>% -->
+<!--   mutate(gender = recode(gender, "F" = "Female", "M" = "Male")) %>% -->
+<!--   mutate(suffix = recode(suffix, "DO" = "Osteopathic training", "MD" = "Allopathic training")) %>% -->
+<!--   rename(`Residency Training` = residency_training, `Medical School Training` = suffix, `Year of FPMRS Board Certification` = board_certification_year, Gender = gender, `Opioid Prescribing Rate` = opioid_prescriber_status) -->
+<!-- ``` -->
 
-
-```{r}
-class(demographics)
-all_demographics <- arsenal::tableby(`Opioid Prescribing Rate`~ .,
-                 data=demographics_table)
-
-final <- summary(all_demographics,
-                   text=T,
-                   title = 'Table: Opioid Prescriber Demographics for Female Pelvic Medicine and Reconstructive Surgeons',
-                   #labelTranslations = mylabels, #Seen in additional functions file
-                   pfootnote=TRUE)
-final
-```
+<!-- ```{r} -->
+<!-- # Draws a nice table one plot -->
+<!-- tm_arsenal_table = function(df, by) { -->
+<!--   print("Function Sanity Check: Create Arsenal Table using arsenal package") -->
+<!--   table_variable_within_function <- arsenal::tableby( -->
+<!--     by ~ ., -->
+<!--     data = df, -->
+<!--     control = tableby.control( -->
+<!--       test = TRUE, -->
+<!--       total = F, -->
+<!--       digits = 1L, -->
+<!--       digits.p = 2L, -->
+<!--       digits.count = 0L, -->
+<!--       numeric.simplify = F, -->
+<!--       numeric.stats = -->
+<!--         c("median", -->
+<!--           "q1q3"), -->
+<!--       cat.stats = -->
+<!--         c("Nmiss", -->
+<!--           "countpct"), -->
+<!--       stats.labels = list( -->
+<!--         Nmiss = "N Missing", -->
+<!--         Nmiss2 = -->
+<!--           "N Missing", -->
+<!--         meansd = "Mean (SD)", -->
+<!--         medianrange = "Median (Range)", -->
+<!--         median = -->
+<!--           "Median", -->
+<!--         medianq1q3 = "Median (Q1, Q3)", -->
+<!--         q1q3 = "Q1, Q3", -->
+<!--         iqr = "IQR", -->
+<!--         range = "Range", -->
+<!--         countpct = "Count (Pct)", -->
+<!--         Nevents = "Events", -->
+<!--         medSurv = -->
+<!--           "Median Survival", -->
+<!--         medTime = "Median Follow-Up" -->
+<!--       ) -->
+<!--     ) -->
+<!--   ) -->
+<!--   final <- summary(table_variable_within_function, -->
+<!--                    text=T, -->
+<!--                    title = 'Table: Applicant Descriptive Variables by Matched or Did Not Match from 2015 to 2018', -->
+<!--                    #labelTranslations = mylabels, #Seen in additional functions file -->
+<!--                    pfootnote=TRUE) -->
+<!--   return(final) -->
+<!-- } -->
+<!-- ``` -->
 
 
-```{r}
-#Split the demographics into top prescribers and normal prescribers
+<!-- ```{r} -->
+<!-- class(demographics) -->
+<!-- all_demographics <- arsenal::tableby(`Opioid Prescribing Rate`~ ., -->
+<!--                  data=demographics_table) -->
 
-#Top 5% of prescribers = top_5_prescribers
-top_5_prescriberstable<- as_tibble(top_5_prescribers)
-write_csv(top_5_prescriberstable, "Data/top_5_prescribers_export_to_exploratory.csv")
+<!-- final <- summary(all_demographics, -->
+<!--                    text=T, -->
+<!--                    title = 'Table: Opioid Prescriber Demographics for Female Pelvic Medicine and Reconstructive Surgeons', -->
+<!--                    #labelTranslations = mylabels, #Seen in additional functions file -->
+<!--                    pfootnote=TRUE) -->
+<!-- final -->
+<!-- ``` -->
 
 
-```
+<!-- ```{r} -->
+<!-- #Split the demographics into top prescribers and normal prescribers -->
+
+<!-- #Top 5% of prescribers = top_5_prescribers -->
+<!-- top_5_prescriberstable<- as_tibble(top_5_prescribers) -->
+<!-- write_csv(top_5_prescriberstable, "Data/top_5_prescribers_export_to_exploratory.csv") -->
+
+
+<!-- ``` -->
 

@@ -5,3 +5,6 @@
 *.db
 .Rproj.user
 .Rhistory
+*.tiff
+*.html
+*.png

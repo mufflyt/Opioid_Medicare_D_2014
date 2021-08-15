@@ -222,6 +222,6 @@ erin_data <- opioidRX %>% group_by(Specialty) %>%
   summarise(specialty_median = round(median(RXRATE), 2), 
             specialty_mean = round(mean(RXRATE),2))
 
-write.csv(erin_data, "erin_data.csv")
+write.csv(erin_data, "Data/erin_data.csv")
 
 # erin_data %>% kable()

@@ -81,16 +81,15 @@ opioidRX <- SF_tb %>%
 ```{r fpmrs_data, include = FALSE}
 rmd_total_fpmrs <- opioidRX %>% select(NPI) %>% unique() %>% 
   ungroup() %>% nrow()
-rmd_total_fpmrs <- 1
-#NPIs of people who prescribed less than ten opioids to medicare beneficiaries
+# NPIs of people who prescribed less than ten opioids to medicare beneficiaries
 LE10_NPIs <- opioidRX %>% group_by(NPI) %>% 
   summarise(OpioidClaimCount = round(mean(OpioidClaimCount),0)) %>% ungroup() %>%
   filter(OpioidClaimCount <10) 
 
-opioidRX %>% group_by(NPI) %>% 
-  summarise(OpioidClaimCount = round(mean(OpioidClaimCount),0)) %>% ungroup() %>% summarise(
-  LE10 = sum(OpioidClaimCount <= 10),
-  GT10 = sum(OpioidClaimCount > 10)) %>% 
+rmd_fpmrs_data <- opioidRX %>% group_by(NPI) %>% 
+  summarise(OpioidClaimCount = round(mean(OpioidClaimCount),0)) %>% 
+  ungroup() %>% summarise(LE10 = sum(OpioidClaimCount <= 10),
+                          GT10 = sum(OpioidClaimCount > 10)) %>% 
   mutate(P_LE10 = round(100*LE10/(LE10 + GT10),0), 
          P_GT10 = round(100*GT10/(LE10 + GT10),0))
 
@@ -101,7 +100,7 @@ fpmrs_GE10 <- opioidRX %>% group_by(NPI) %>%
 
 ```
 
-<!-- A total of `r` rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r` rmd_fpmrs_data$LE10` (`r` rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r` rmd_fpmrs_data$GT10` (`r` rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.   -->
+A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.
 
 ```{r query_1}
 

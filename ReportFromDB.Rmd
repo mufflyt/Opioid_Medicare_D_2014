@@ -26,17 +26,16 @@ library(exploratory)
 library(ggplot2)
 library(ggridges)
 library(tidyverse)
-<<<<<<< HEAD
 library(digest)
 library(arsenal)
-=======
+
 library(DBI)
 library(dplyr)
 library(dbplyr)
 library(Hmisc)
 library(knitr)
 library(rmarkdown)
->>>>>>> 6a91e8bfffd7e75cd5608f4482008df00bb4b018
+
 ```
 
 ```{r load_db}
@@ -44,7 +43,7 @@ library(rmarkdown)
 #current_working_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 #setwd(current_working_dir)
 batch <- as.integer(Sys.time())
-db <-'/home/dfcoelho/Downloads/tyler.db'
+db <-'/Volumes/Video Projects Muffly 1/Opioids/tyler.db'
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_tb <- tbl(con, "PUF")
 SF_tb <- tbl(con, "SummaryFiles")

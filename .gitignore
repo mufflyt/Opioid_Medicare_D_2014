@@ -5,4 +5,10 @@
 *.db
 .Rproj.user
 .Rhistory
+<<<<<<< HEAD
 dev/
+=======
+*.tiff
+*.html
+*.png
+>>>>>>> 95ecd80748b7f9d7f65ecffa5568d4dcd6ddf5b8

@@ -222,6 +222,25 @@ erin_data <- opioidRX %>% group_by(Specialty) %>%
   summarise(specialty_median = round(median(RXRATE), 2), 
             specialty_mean = round(mean(RXRATE),2))
 
+erin_data_b <- opioidRX %>%
+  group_by(Specialty, NPI) %>%
+  summarise(.groups = "drop",
+            TotalClaimCount = sum(TotalClaimCount),
+            OpioidClaimCount = sum(OpioidClaimCount),
+            opioidPR = 100*OpioidClaimCount/TotalClaimCount,
+            RXRATE = mean(RXRATE)) %>%
+  group_by(Specialty) %>% 
+  summarise(
+    MEDIAN_opioidPR = 100*median(RXRATE),
+    WEIGHTED_MEDIAN_opioidPR = 100*weighted.median(x=RXRATE, w=TotalClaimCount),
+    MEAN_opioidPR = 100*mean(RXRATE),
+    MEDIAN_TotalClaim = 100*median(TotalClaimCount),
+    MEDIAN_TotalOpioidClaim = 100*median(OpioidClaimCount),
+    TotalClaim = sum(TotalClaimCount),
+    TotalOpioidClaim = sum(OpioidClaimCount)) %>% 
+  mutate(across(where(is.numeric), round, 2))
+
 write.csv(erin_data, "Data/erin_data.csv")
+write.csv(erin_data_b, "Data/erin_data_b.csv")
 
 # erin_data %>% kable()

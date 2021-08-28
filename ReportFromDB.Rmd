@@ -40,7 +40,7 @@ library(spatstat)
 
 # Purpose
 
-The main purpose of this document is to back the statements made in the manuscript entitled "", but also to describe the methodology applied to the data in order to aggregate and present the results discussed in the manuscript.
+The main purpose of this document is to back the statements made in the manuscript entitled "*Variation in Opioid Prescribing Practices Among Female Pelvic Medicine and Reconstructive Surgeons by State from 2013 to 2017: A Retrospective Cohort Study*", but also to describe the methodology applied to the data in order to aggregate and present the results discussed in the manuscript.
 
 Below we set the path to the database to be used as source, as well as each table that will be used throughout the analysis.
 ```{r load_db}
@@ -169,7 +169,7 @@ fpmrs_GE10 <- opioidRX %>% group_by(NPI) %>%
 
 ```
 
-A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified using the Part D Opioid Prescriber Summary File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.
+A total of `r rmd_total_fpmrs` Female Pelvic Medicine and Reconstructive Surgeons (FPMRS) were identified in the Part D Prescriber Public Use File: `r rmd_fpmrs_data$LE10` (`r rmd_fpmrs_data$P_LE10`%) prescribed 0-10 opioid claims, and `r rmd_fpmrs_data$GT10` (`r rmd_fpmrs_data$P_GT10`%) prescribed more than 10 opioid claims to Medicare Part D patients.
 
 ```{r query_1}
 # For the next calculations we need all claims during the period, after dropping
@@ -391,7 +391,7 @@ The total amount of beneficiaries that received prescriptions from FPMRS (only t
 
 `r tbl_bene <- as.data.frame(cbind(t(claims_10pp), t(claims_5pp))); names(tbl_bene) <- c("Total_Beneficiaries", "Total_Beneficiaries_top5"); tbl_bene`
 
-There are `r length(top_5_prescribers)` FPMRS that are considered the top 5% prescribers. Also, `r `claims %>% filter(drug_name %in% opioids, total_claim_count > 10) %>% distinct(NPI) %>% nrow()` FPMRS prescribed more than 10 opioids claims.
+There are `r length(top_5_prescribers)` FPMRS that are considered the top 5% prescribers. Also, `r claims %>% filter(drug_name %in% OPIOIDS_list, total_claim_count > 10) %>% distinct(NPI) %>% nrow()` FPMRS prescribed more than 10 opioids claims.
 
 The top 6 most prescribed drugs are:
 
@@ -401,13 +401,13 @@ total_30_day_fill_count  - Median number of Opioid Claims prescribed.
 Only prescribers with `total_claim_count > 10` were considered.
 `r table_total_30_day_fill_count`
 
-total_30_day_fill_count_5pp - Median number of 30 day fill count Opioid Claims prescribed by the top 5 prescribers.
+total_30_day_fill_count_5pp - Median number of 30 day fill count Opioid Claims prescribed by the top 5% prescribers.
 
 Only prescribers with `total_claim_count > 10` were considered.
 
 `r table_total_30_day_fill_count_5pp`
 
-total_claim_count
+total_claim_count - Median number of Opioid Claims prescribed
 
 `r table_total_claim_count`
 
@@ -478,7 +478,7 @@ Ridges were not included for states with less than 4 FPMRS listed in the PUF fil
 
 `r include_graphics("DentistOpioidMeanMedianPlot.png") `
 
-<!-- ` erin_data %>% paged_table()` -->
+`r erin_data_b %>% paged_table()`
 
 
 <!-- Can we get demographics of physicians who prescribed opioids.  `opioidRX` has the NPI numbers of all FPMRS physicians who prescribed.    -->

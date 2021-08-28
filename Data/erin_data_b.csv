@@ -1,0 +1,10 @@
+"","Specialty","MEDIAN_opioidPR","WEIGHTED_MEDIAN_opioidPR","MEAN_opioidPR","MEDIAN_TotalClaim","MEDIAN_TotalOpioidClaim","TotalClaim","TotalOpioidClaim"
+"1","Colon & Rectal Surgery",100,54.84,85.76,2150,1750,3660,1875
+"2","Emergency Medicine",42.14,10.18,43.99,29400,11400,47161856,9457032
+"3","Family Medicine",4.29,5.07,7.62,477900,20100,1304238877,76572588
+"4","General Surgery",84.65,11.64,68.14,15700,8900,12708666,3633035
+"5","Geriatric Medicine",3.67,3.95,6.92,638000,24400,40676314,1799824
+"6","Internal Medicine",2.54,3.93,6.68,231500,5500,1418851642,65287469
+"7","Obstetrics & Gynecology",0,0,8.01,14600,0,9020775,389989
+"8","Orthopedic Surgery",66.63,54.7,64.92,53500,31500,25923910,14132919
+"9","Surgical Oncology",96.72,37.21,70.09,8600,5000,164648,71118

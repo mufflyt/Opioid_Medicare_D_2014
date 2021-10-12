@@ -160,7 +160,7 @@ opioidRX <- opioidRX %>% filter(Specialty %in% c("Gynecological/Oncology", "Emer
                         "Family Practice", "Internal Medicine",
                         "Orthopaedic Surgery", "Orthopedic Surgery",
                         "Urology", "Obstetrics & Gynecology",
-                        "Obstetrics/Gynecology",
+                        "Obstetrics/Gynecology", "FPMRS",
                         "Female Pelvic Medicine and Reconstructive Surgery",
                         "Urology", "Colon & Rectal Surgery", "Otolaryngy",
                         "Surgical Oncology", "Gynecological/Oncology",

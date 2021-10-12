@@ -36,6 +36,7 @@ library(Hmisc)
 library(knitr)
 library(rmarkdown)
 
+#install.packages("openintro")
 library(openintro)
 ```
 

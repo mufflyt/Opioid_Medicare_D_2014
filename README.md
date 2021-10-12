@@ -1,9 +1,10 @@
 # Opioid_Medicare_D_2014
 
-Ridge_and_HeatMap.R - Creates the images.  
-ReportFromDB.Rmd - Creates the code needed.  
+ReportFromDB.Rmd - Creates the data by cleaning it.
+Ridge_and_HeatMap_DB_Rev1.R - Creates the images.  
+  
 
-
+## Attributions
 This was the original read.me from Dr. Jenny Listman:
 Explore and visualize data on Opioid prescriptions covered by Medicare part D in 2014, by MD, State, Zip. Data set includes, per MD, total number of prescriptions & number of opiate prescriptions.
 
@@ -40,7 +41,7 @@ Opioid Prescribing Pattenrs and Complications in the Dermatology Medicare Popula
 
 * Very good review - https://github.com/jasonbxu/psql
 
-# How to plut NPI file into a postgres database
+# How to put NPI file into a postgres database
 https://github.com/semerj/nppes-postgres
 
 # Clean Data

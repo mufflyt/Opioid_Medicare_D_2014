@@ -18,7 +18,8 @@ library(knitr)
 library(DBI)
 
 `%nin%` <- Negate(`%in%`)
-db <-  '/home/dfcoelho/Downloads/tyler.db'
+db <-'/Volumes/Video Projects Muffly 1/Opioids/tyler.db'
+#db <-  '/home/dfcoelho/Downloads/tyler.db'
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_tb <- tbl(con, "PUF")
 SF_tb <- tbl(con, "SummaryFiles")
@@ -37,7 +38,8 @@ OPIOIDS_list <-  as.list(OPIOIDS) %>% unlist(use.names = FALSE)
 
 opioidRX <-
   PUF_tb %>% 
-  filter(!is.na(bene_count)) %>% filter(!is.na(total_claim_count)) %>% 
+  #filter(!is.na(bene_count)) %>% #We may need to change this
+  #filter(!is.na(total_claim_count)) %>% #We may need to change this
   collect() %>%
   rename(Specialty = specialty_description) %>%
   rename(State = nppes_provider_state) %>%
@@ -70,7 +72,7 @@ opioidRX <- opioidRX %>%
   group_by(Specialty) %>%
   mutate(MedianBySpecialty = median(RXRATE, na.rm = TRUE)) %>% ungroup() 
 
-write_rds(opioidRX, "Data/opioidRX.rds")
+write_rds(opioidRX, "Data/opioidRXincludena.rds")
 opioidRX <- opioidRX %>% filter(NPI %in% FPMRS_NPIs) 
 #opioidRX <- readr::read_rds("Data/opioidRX.rds")
 dim(opioidRX)
@@ -119,7 +121,7 @@ FPMRS_OpioidRidgePlot <- ggplot(FPMRS_OpioidRXState,
 
 FPMRS_OpioidRidgePlot
 
-ggsave(path = getwd(), filename = "FPMRS_OpioidRidgePlot.tiff", width = 15, 
+ggsave(path = getwd(), filename = "figures/FPMRS_OpioidRidgePlotfilterincludena.tiff", width = 15, 
        height = 12, device = 'tiff', dpi = 600, bg='white')
 
 ### FPMRS Opioid boxplot ----
@@ -129,7 +131,7 @@ OpioidBoxPlot <- ggplot(FPMRS_OpioidRXState, aes(x = reorder(State, -Median), y 
   theme_bw()
 
 # OpioidBoxPlot
-ggsave(path = getwd(), filename = "OpioidBoxPlot.tiff", width = 15, height = 12, 
+ggsave(path = getwd(), filename = "figures/OpioidBoxPlotincludena.tiff", width = 15, height = 12, 
        device = 'tiff', dpi = 600)
 
 # Fraction of FPMRS that are Opioids
@@ -142,7 +144,7 @@ DentistOpioidMeanMedianPlot <- ggplot(FPMRS_OpioidRXState,
   theme_bw()
 
 # DentistOpioidMeanMedianPlot
-ggsave(path = getwd(), filename = "DentistOpioidMeanMedianPlot.tiff", width = 15, 
+ggsave(path = getwd(), filename = "figures/DentistOpioidMeanMedianPlotincludena.tiff", width = 15, 
        height = 12, device = 'tiff', dpi = 600)
 
 # Heat map ----
@@ -212,7 +214,7 @@ OpioidHeatMap <- ggplot(TidyOpioidRX,
   guides(fill = guide_colourbar(title.position = "top"))
 
 OpioidHeatMap
-ggsave(path = getwd(), filename = "OpioidHeatMap.tiff", width = 16, height = 11, 
+ggsave(path = getwd(), filename = "figures/OpioidHeatMapincludena.tiff", width = 16, height = 11, 
        device = 'tiff', dpi = 600)
 
 # ggsave(path = getwd(), filename = "OpioidHeatMap_B.tiff", width = 10, 
@@ -222,6 +224,7 @@ erin_data <- opioidRX %>% group_by(Specialty) %>%
   summarise(specialty_median = round(median(RXRATE), 2), 
             specialty_mean = round(mean(RXRATE),2))
 
-write.csv(erin_data, "Data/erin_data.csv")
+write.csv(erin_data, "Data/erin_dataincludena.csv")
 
 # erin_data %>% kable()
+

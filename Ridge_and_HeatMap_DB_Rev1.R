@@ -18,7 +18,8 @@ library(knitr)
 library(DBI)
 
 `%nin%` <- Negate(`%in%`)
-db <-  '/home/dfcoelho/Downloads/tyler.db'
+#db <-  '/home/dfcoelho/Downloads/tyler.db'
+db <-'/Volumes/Video Projects Muffly 1/Opioids/tyler.db'
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_tb <- tbl(con, "PUF")
 SF_tb <- tbl(con, "SummaryFiles")

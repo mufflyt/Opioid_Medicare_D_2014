@@ -45,7 +45,7 @@ The main purpose of this document is to back the statements made in the manuscri
 Below we set the path to the database to be used as source, as well as each table that will be used throughout the analysis.
 ```{r load_db}
 
-db <-'/home/dfcoelho/Downloads/tyler.db'
+db <-'/Volumes/Video Projects Muffly 1/Opioids/tyler.db'
 con <- dbConnect(RSQLite::SQLite(), db)
 PUF_tb <- tbl(con, "PUF")
 SF_tb <- tbl(con, "SummaryFiles")

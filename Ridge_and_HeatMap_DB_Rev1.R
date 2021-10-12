@@ -233,7 +233,7 @@ erin_data_b <- opioidRX %>%
   group_by(Specialty) %>% 
   summarise(
     MEDIAN_opioidPR = 100*median(RXRATE),
-    WEIGHTED_MEDIAN_opioidPR = 100*weighted.median(x=RXRATE, w=TotalClaimCount),
+    #WEIGHTED_MEDIAN_opioidPR = 100*weighted.median(x=RXRATE, w=TotalClaimCount),
     MEAN_opioidPR = 100*mean(RXRATE),
     MEDIAN_TotalClaim = 100*median(TotalClaimCount),
     MEDIAN_TotalOpioidClaim = 100*median(OpioidClaimCount),
